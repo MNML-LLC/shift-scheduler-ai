@@ -257,8 +257,9 @@ export default function middleware(request) {
     });
 
     return new Response(null, {
-      status: 200,
+      status: 302,
       headers: {
+        Location: url.pathname + url.search,
         'Set-Cookie': cookieValue,
       },
     });
