@@ -41,7 +41,7 @@ async function compareOctober() {
     });
 
     // DMLファイルから10月データを抽出
-    const dmlContent = fs.readFileSync('/Users/yukiuchiyama/Dev/shift-scheduler-ai/shift-scheduler-ai/scripts/setup/seed_transaction_data.sql', 'utf8');
+    const dmlContent = fs.readFileSync('/Users/mnmladmin/Dev/mnml/shift/scripts/setup/seed_transaction_data.sql', 'utf8');
     const octoberLines = dmlContent.split('\n').filter(line =>
       line.includes('INSERT INTO ops.shift_plans') && line.includes('2025, 10,')
     );

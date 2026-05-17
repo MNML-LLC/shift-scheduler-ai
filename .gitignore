@@ -56,3 +56,6 @@ backups
 *.sql
 *.dump
 *.dmp
+
+# Claude Code
+.claude/
