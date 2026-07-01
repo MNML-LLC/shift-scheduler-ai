@@ -2,7 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import { query, transaction } from '../config/database.js';
 import DEFAULT_CONFIG from '../config/defaults.js';
-import { SHIFT_PREFERENCE_STATUS, VALID_PREFERENCE_STATUSES } from '../config/constants.js';
+import { SHIFT_PREFERENCE_STATUS, VALID_PREFERENCE_STATUSES, PLAN_STATUS } from '../config/constants.js';
 import { VALIDATION_MESSAGES } from '../config/validation.js';
 import ShiftGenerationService from '../services/shift/ShiftGenerationService.js';
 import ConstraintValidationService from '../services/shift/ConstraintValidationService.js';
@@ -22,6 +22,24 @@ function getPreviousMonth(year, month) {
     return { year: year - 1, month: 12 };
   }
   return { year, month: month - 1 };
+}
+
+/**
+ * 翌月を計算
+ */
+function getNextMonth(year, month) {
+  if (month === 12) {
+    return { year: year + 1, month: 1 };
+  }
+  return { year, month: month + 1 };
+}
+
+/**
+ * バッチ処理のデフォルト対象月（実行日の翌月, JST基準）を計算
+ */
+function getDefaultBatchTargetMonth() {
+  const [todayYear, todayMonth] = formatDateToYYYYMMDD(new Date()).split('-').map(Number);
+  return getNextMonth(todayYear, todayMonth);
 }
 
 /**
@@ -1226,6 +1244,138 @@ router.post('/plans/approve-first', async (req, res) => {
 
   } catch (error) {
     console.error('Error approving first plan:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * 第1案一括承認（バッチ処理用）
+ * POST /api/shifts/plans/approve-first-batch
+ *
+ * 全アクティブ店舗のFIRSTプラン（DRAFT）を対象月分まとめて承認する。
+ * GitHub Actions等の外部バッチ処理からの呼び出しを想定し、
+ * `x-batch-api-key` ヘッダーによるAPIキー認証を行う。
+ *
+ * Request Body:
+ * - tenant_id: テナントID (default: 1)
+ * - target_year: 対象年 (optional, 省略時は実行日の翌月の年をJST基準で自動計算)
+ * - target_month: 対象月 (optional, 省略時は実行日の翌月をJST基準で自動計算)
+ */
+router.post('/plans/approve-first-batch', async (req, res) => {
+  try {
+    const batchApiKey = process.env.BATCH_API_KEY;
+    if (!batchApiKey) {
+      return res.status(500).json({
+        success: false,
+        error: 'BATCH_API_KEY is not configured on the server'
+      });
+    }
+
+    if (req.headers['x-batch-api-key'] !== batchApiKey) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized'
+      });
+    }
+
+    const { tenant_id = 1 } = req.body;
+    let { target_year, target_month } = req.body;
+
+    if (!target_year || !target_month) {
+      const defaultTarget = getDefaultBatchTargetMonth();
+      target_year = target_year || defaultTarget.year;
+      target_month = target_month || defaultTarget.month;
+    }
+
+    target_year = parseInt(target_year, 10);
+    target_month = parseInt(target_month, 10);
+
+    if (!Number.isInteger(target_month) || target_month < 1 || target_month > 12) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid target_month: must be between 1 and 12'
+      });
+    }
+
+    const storesResult = await query(
+      'SELECT store_id FROM core.stores WHERE tenant_id = $1 AND is_active = TRUE',
+      [tenant_id]
+    );
+
+    const approved = [];
+    const skipped_missing = [];
+    const skipped_already = [];
+    const notify_failed = [];
+    const failed = [];
+
+    for (const store of storesResult.rows) {
+      const storeId = store.store_id;
+      try {
+        const planResult = await query(
+          `SELECT plan_id, status
+           FROM ops.shift_plans
+           WHERE tenant_id = $1 AND store_id = $2 AND plan_year = $3 AND plan_month = $4 AND plan_type = 'FIRST'`,
+          [tenant_id, storeId, target_year, target_month]
+        );
+
+        if (planResult.rows.length === 0) {
+          skipped_missing.push(storeId);
+          continue;
+        }
+
+        const plan = planResult.rows[0];
+
+        if (plan.status === PLAN_STATUS.APPROVED) {
+          skipped_already.push(storeId);
+          continue;
+        }
+
+        await query(
+          `UPDATE ops.shift_plans
+           SET status = 'APPROVED', updated_at = CURRENT_TIMESTAMP
+           WHERE plan_id = $1`,
+          [plan.plan_id]
+        );
+
+        if (process.env.LIFF_BACKEND_URL) {
+          try {
+            await axios.post(`${process.env.LIFF_BACKEND_URL}/api/notification/first-plan-approved`, {
+              tenant_id,
+              store_id: storeId,
+              plan_id: plan.plan_id,
+              year: target_year,
+              month: target_month
+            });
+          } catch (notifyError) {
+            // 通知失敗は承認処理に影響させない（既存挙動を踏襲）。Slack通知向けに記録のみ行う
+            console.error(`Failed to send LINE notification for store ${storeId}:`, notifyError.message);
+            notify_failed.push(storeId);
+          }
+        }
+
+        approved.push(storeId);
+      } catch (storeError) {
+        console.error(`Error approving first plan for store ${storeId}:`, storeError);
+        failed.push({ store_id: storeId, error: storeError.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      target_year,
+      target_month,
+      approved,
+      skipped_missing,
+      skipped_already,
+      notify_failed,
+      failed
+    });
+
+  } catch (error) {
+    console.error('Error in batch first plan approval:', error);
     res.status(500).json({
       success: false,
       error: error.message
