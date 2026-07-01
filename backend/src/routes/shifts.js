@@ -1,5 +1,6 @@
 import express from 'express';
 import axios from 'axios';
+import crypto from 'crypto';
 import { query, transaction } from '../config/database.js';
 import DEFAULT_CONFIG from '../config/defaults.js';
 import { SHIFT_PREFERENCE_STATUS, VALID_PREFERENCE_STATUSES, PLAN_STATUS } from '../config/constants.js';
@@ -1274,7 +1275,13 @@ router.post('/plans/approve-first-batch', async (req, res) => {
       });
     }
 
-    if (req.headers['x-batch-api-key'] !== batchApiKey) {
+    const providedKeyBuffer = Buffer.from(req.headers['x-batch-api-key'] || '');
+    const expectedKeyBuffer = Buffer.from(batchApiKey);
+    const isAuthorized =
+      providedKeyBuffer.length === expectedKeyBuffer.length &&
+      crypto.timingSafeEqual(providedKeyBuffer, expectedKeyBuffer);
+
+    if (!isAuthorized) {
       return res.status(401).json({
         success: false,
         error: 'Unauthorized'
@@ -1284,6 +1291,13 @@ router.post('/plans/approve-first-batch', async (req, res) => {
     const { tenant_id = 1 } = req.body;
     let { target_year, target_month } = req.body;
 
+    if (!Number.isInteger(tenant_id) || tenant_id <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid tenant_id: must be a positive integer'
+      });
+    }
+
     if (!target_year || !target_month) {
       const defaultTarget = getDefaultBatchTargetMonth();
       target_year = target_year || defaultTarget.year;
@@ -1292,6 +1306,13 @@ router.post('/plans/approve-first-batch', async (req, res) => {
 
     target_year = parseInt(target_year, 10);
     target_month = parseInt(target_month, 10);
+
+    if (!Number.isInteger(target_year) || target_year < 2020 || target_year > 2100) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid target_year: must be between 2020 and 2100'
+      });
+    }
 
     if (!Number.isInteger(target_month) || target_month < 1 || target_month > 12) {
       return res.status(400).json({
@@ -1378,7 +1399,7 @@ router.post('/plans/approve-first-batch', async (req, res) => {
     console.error('Error in batch first plan approval:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: 'Internal server error'
     });
   }
 });

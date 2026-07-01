@@ -80,6 +80,46 @@ describe('POST /api/shifts/plans/approve-first-batch', () => {
     expect(res.body.success).toBe(false)
   })
 
+  it('returns 401 with a byte-length mismatched API key', async () => {
+    query.mockResolvedValue({ rows: [] })
+
+    const res = await request(app)
+      .post('/api/shifts/plans/approve-first-batch')
+      .set('x-batch-api-key', 'short')
+      .send({ tenant_id: 1, target_year: 2026, target_month: 8 })
+
+    expect(res.status).toBe(401)
+    expect(res.body.success).toBe(false)
+  })
+
+  it('returns 400 when tenant_id is not a positive integer', async () => {
+    query.mockResolvedValue({ rows: [] })
+
+    for (const invalidTenantId of ['abc', 0, -1, 1.5, null]) {
+      const res = await request(app)
+        .post('/api/shifts/plans/approve-first-batch')
+        .set('x-batch-api-key', 'test-batch-key')
+        .send({ tenant_id: invalidTenantId, target_year: 2026, target_month: 8 })
+
+      expect(res.status).toBe(400)
+      expect(res.body.success).toBe(false)
+    }
+  })
+
+  it('returns 400 when target_year is not a valid integer in range', async () => {
+    query.mockResolvedValue({ rows: [] })
+
+    for (const invalidYear of ['abc', 2019, 2101, 1.5]) {
+      const res = await request(app)
+        .post('/api/shifts/plans/approve-first-batch')
+        .set('x-batch-api-key', 'test-batch-key')
+        .send({ tenant_id: 1, target_year: invalidYear, target_month: 8 })
+
+      expect(res.status).toBe(400)
+      expect(res.body.success).toBe(false)
+    }
+  })
+
   it('computes the target month as next month (JST) when not provided', async () => {
     vi.setSystemTime(new Date('2026-07-01T00:30:00Z')) // 2026-07-01 09:30 JST
     mockStoresAndPlans([], {})
