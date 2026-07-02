@@ -2,7 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import { query, transaction } from '../config/database.js';
 import DEFAULT_CONFIG from '../config/defaults.js';
-import { SHIFT_PREFERENCE_STATUS, VALID_PREFERENCE_STATUSES } from '../config/constants.js';
+import { SHIFT_PREFERENCE_STATUS, VALID_PREFERENCE_STATUSES, GENERATION_TYPE } from '../config/constants.js';
 import { VALIDATION_MESSAGES } from '../config/validation.js';
 import ShiftGenerationService from '../services/shift/ShiftGenerationService.js';
 import ConstraintValidationService from '../services/shift/ConstraintValidationService.js';
@@ -22,6 +22,31 @@ function getPreviousMonth(year, month) {
     return { year: year - 1, month: 12 };
   }
   return { year, month: month - 1 };
+}
+
+/**
+ * 指定年月の末日（日）を取得する
+ * new Date() を使わず整数演算のみで計算する（JST/UTCのオフセットずれを避けるため）
+ */
+function getLastDayOfMonth(year, month) {
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return daysInMonth[month - 1];
+}
+
+/**
+ * LINE通知: 第1案承認
+ * LIFF backend の通知エンドポイントを叩く共通ヘルパー
+ * （呼び出し元で process.env.LIFF_BACKEND_URL の有無を確認すること）
+ */
+async function notifyFirstPlanApproved({ tenant_id, store_id, plan_id, year, month }) {
+  return axios.post(`${process.env.LIFF_BACKEND_URL}/api/notification/first-plan-approved`, {
+    tenant_id,
+    store_id,
+    plan_id,
+    year,
+    month
+  });
 }
 
 /**
@@ -1201,7 +1226,7 @@ router.post('/plans/approve-first', async (req, res) => {
     // LINE通知を送信（第1案承認）
     if (process.env.LIFF_BACKEND_URL) {
       try {
-        await axios.post(`${process.env.LIFF_BACKEND_URL}/api/notification/first-plan-approved`, {
+        await notifyFirstPlanApproved({
           tenant_id: tenant_id,
           store_id: plan.store_id,
           plan_id: plan_id,
@@ -1226,6 +1251,143 @@ router.post('/plans/approve-first', async (req, res) => {
 
   } catch (error) {
     console.error('Error approving first plan:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * 月次第一案バッチ（空プラン一括作成 + 承認 + LINE通知）
+ * POST /api/shifts/plans/monthly-first-plan-batch
+ *
+ * 毎月1日 9:00 JST に GitHub Actions から呼び出される想定のバッチ専用エンドポイント。
+ * 全アクティブテナント × 全アクティブ店舗に対し、対象月の「空の」第1案（募集枠）を
+ * status='APPROVED' で作成する。shift_details 等の子テーブルへの書き込みは行わない。
+ *
+ * Headers:
+ * - x-batch-api-key: BATCH_API_KEY 環境変数と一致する必要がある（必須）
+ *
+ * Request Body:
+ * - target_year: 対象年 (required)
+ * - target_month: 対象月 1-12 (required)
+ *
+ * 冪等性:
+ * - ops.shift_plans の一意制約 (tenant_id, store_id, plan_year, plan_month, plan_type) を利用し、
+ *   ON CONFLICT DO UPDATE + RETURNING (xmax = 0) AS inserted で新規作成/既存判定を行う。
+ * - 新規作成された（inserted=true）店舗にのみ LINE 通知を送信する。
+ */
+router.post('/plans/monthly-first-plan-batch', async (req, res) => {
+  const batchApiKey = req.headers['x-batch-api-key'];
+
+  if (!process.env.BATCH_API_KEY || batchApiKey !== process.env.BATCH_API_KEY) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized'
+    });
+  }
+
+  const { target_year, target_month } = req.body;
+  const targetYear = Number(target_year);
+  const targetMonth = Number(target_month);
+
+  if (
+    !Number.isInteger(targetYear) ||
+    !Number.isInteger(targetMonth) ||
+    targetMonth < 1 ||
+    targetMonth > 12
+  ) {
+    return res.status(400).json({
+      success: false,
+      error: 'target_year, target_month (1-12) は必須です'
+    });
+  }
+
+  try {
+    const storesResult = await query(`
+      SELECT s.tenant_id, s.store_id
+      FROM core.stores s
+      JOIN core.tenants t ON t.tenant_id = s.tenant_id
+      WHERE s.is_active = TRUE AND t.is_active = TRUE
+      ORDER BY s.tenant_id, s.store_id
+    `);
+
+    const monthStr = String(targetMonth).padStart(2, '0');
+    const periodStart = `${targetYear}-${monthStr}-01`;
+    const periodEnd = `${targetYear}-${monthStr}-${String(getLastDayOfMonth(targetYear, targetMonth)).padStart(2, '0')}`;
+    const planName = `${targetYear}年${targetMonth}月シフト（第1案）`;
+
+    const created = [];
+    const skippedAlready = [];
+    const failed = [];
+    const failedNotification = [];
+
+    for (const store of storesResult.rows) {
+      const { tenant_id, store_id } = store;
+
+      try {
+        const planCode = `FIRST-${targetYear}${monthStr}-${store_id}`;
+
+        const upsertResult = await transaction(client => client.query(`
+          INSERT INTO ops.shift_plans (
+            tenant_id, store_id, plan_year, plan_month, plan_type, status,
+            plan_code, plan_name, period_start, period_end, generation_type,
+            created_at, updated_at
+          ) VALUES (
+            $1, $2, $3, $4, 'FIRST', 'APPROVED',
+            $5, $6, $7, $8, $9,
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+          )
+          ON CONFLICT (tenant_id, store_id, plan_year, plan_month, plan_type)
+          DO UPDATE SET status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
+          RETURNING plan_id, (xmax = 0) AS inserted
+        `, [
+          tenant_id, store_id, targetYear, targetMonth,
+          planCode, planName, periodStart, periodEnd, GENERATION_TYPE.BATCH
+        ]));
+
+        const { plan_id, inserted } = upsertResult.rows[0];
+
+        if (!inserted) {
+          skippedAlready.push({ tenant_id, store_id });
+          continue;
+        }
+
+        created.push({ tenant_id, store_id, plan_id });
+
+        if (process.env.LIFF_BACKEND_URL) {
+          try {
+            await notifyFirstPlanApproved({
+              tenant_id,
+              store_id,
+              plan_id,
+              year: targetYear,
+              month: targetMonth
+            });
+          } catch (notifyError) {
+            console.error(`Failed to send LINE notification (tenant=${tenant_id}, store=${store_id}):`, notifyError.message);
+            failedNotification.push({ tenant_id, store_id, error: notifyError.message });
+          }
+        }
+      } catch (storeError) {
+        console.error(`Error in monthly first plan batch (tenant=${tenant_id}, store=${store_id}):`, storeError);
+        failed.push({ tenant_id, store_id, error: storeError.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      target_year: targetYear,
+      target_month: targetMonth,
+      created,
+      skipped_already: skippedAlready,
+      failed,
+      failed_notification: failedNotification
+    });
+
+  } catch (error) {
+    console.error('Error running monthly first plan batch:', error);
     res.status(500).json({
       success: false,
       error: error.message
