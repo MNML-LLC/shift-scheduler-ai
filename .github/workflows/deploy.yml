@@ -17,14 +17,12 @@ jobs:
       - run: npm install -g vercel@latest
       - name: Deploy to Vercel (Production)
         if: github.ref == 'refs/heads/main'
-        working-directory: ./frontend
         run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       - name: Deploy to Vercel (Preview)
         if: github.ref != 'refs/heads/main'
-        working-directory: ./frontend
         run: vercel deploy --token=${{ secrets.VERCEL_TOKEN }} --yes
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
