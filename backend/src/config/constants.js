@@ -22,6 +22,13 @@ export const PLAN_STATUS = {
 };
 
 /**
+ * シフト計画の生成方式
+ */
+export const GENERATION_TYPE = {
+  BATCH: 'BATCH',
+};
+
+/**
  * 有効な全ステータス一覧
  */
 export const VALID_PREFERENCE_STATUSES = Object.values(SHIFT_PREFERENCE_STATUS);
@@ -30,6 +37,7 @@ export const VALID_PLAN_STATUSES = Object.values(PLAN_STATUS);
 export default {
   SHIFT_PREFERENCE_STATUS,
   PLAN_STATUS,
+  GENERATION_TYPE,
   VALID_PREFERENCE_STATUSES,
   VALID_PLAN_STATUSES,
 };
