@@ -1,5 +1,6 @@
 import express from 'express';
 import axios from 'axios';
+import crypto from 'crypto';
 import { query, transaction } from '../config/database.js';
 import DEFAULT_CONFIG from '../config/defaults.js';
 import { SHIFT_PREFERENCE_STATUS, VALID_PREFERENCE_STATUSES, GENERATION_TYPE } from '../config/constants.js';
@@ -40,13 +41,13 @@ function getLastDayOfMonth(year, month) {
  * （呼び出し元で process.env.LIFF_BACKEND_URL の有無を確認すること）
  */
 async function notifyFirstPlanApproved({ tenant_id, store_id, plan_id, year, month }) {
-  return axios.post(`${process.env.LIFF_BACKEND_URL}/api/notification/first-plan-approved`, {
+  await axios.post(`${process.env.LIFF_BACKEND_URL}/api/notification/first-plan-approved`, {
     tenant_id,
     store_id,
     plan_id,
     year,
     month
-  });
+  }, { timeout: 10000 });
 }
 
 /**
@@ -1275,13 +1276,23 @@ router.post('/plans/approve-first', async (req, res) => {
  *
  * 冪等性:
  * - ops.shift_plans の一意制約 (tenant_id, store_id, plan_year, plan_month, plan_type) を利用し、
- *   ON CONFLICT DO UPDATE + RETURNING (xmax = 0) AS inserted で新規作成/既存判定を行う。
+ *   ON CONFLICT DO UPDATE SET plan_id = shift_plans.plan_id（no-op self-update）+
+ *   RETURNING (xmax = 0) AS inserted で新規作成/既存判定を行う。既存プランの status 等は一切
+ *   変更しない（DRAFT に変更済みのプランがあっても上書きされない）。
  * - 新規作成された（inserted=true）店舗にのみ LINE 通知を送信する。
  */
 router.post('/plans/monthly-first-plan-batch', async (req, res) => {
-  const batchApiKey = req.headers['x-batch-api-key'];
+  const batchApiKey = req.headers['x-batch-api-key'] || '';
+  const expectedApiKey = process.env.BATCH_API_KEY || '';
 
-  if (!process.env.BATCH_API_KEY || batchApiKey !== process.env.BATCH_API_KEY) {
+  const providedKeyBuffer = Buffer.from(batchApiKey);
+  const expectedKeyBuffer = Buffer.from(expectedApiKey);
+  const isApiKeyValid =
+    expectedApiKey.length > 0 &&
+    providedKeyBuffer.length === expectedKeyBuffer.length &&
+    crypto.timingSafeEqual(providedKeyBuffer, expectedKeyBuffer);
+
+  if (!isApiKeyValid) {
     return res.status(401).json({
       success: false,
       error: 'Unauthorized'
@@ -1291,10 +1302,13 @@ router.post('/plans/monthly-first-plan-batch', async (req, res) => {
   const { target_year, target_month } = req.body;
   const targetYear = Number(target_year);
   const targetMonth = Number(target_month);
+  const currentYear = new Date().getFullYear();
 
   if (
     !Number.isInteger(targetYear) ||
     !Number.isInteger(targetMonth) ||
+    targetYear < currentYear - 1 ||
+    targetYear > currentYear + 5 ||
     targetMonth < 1 ||
     targetMonth > 12
   ) {
@@ -1329,7 +1343,7 @@ router.post('/plans/monthly-first-plan-batch', async (req, res) => {
       try {
         const planCode = `FIRST-${targetYear}${monthStr}-${store_id}`;
 
-        const upsertResult = await transaction(client => client.query(`
+        const upsertResult = await query(`
           INSERT INTO ops.shift_plans (
             tenant_id, store_id, plan_year, plan_month, plan_type, status,
             plan_code, plan_name, period_start, period_end, generation_type,
@@ -1340,12 +1354,12 @@ router.post('/plans/monthly-first-plan-batch', async (req, res) => {
             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
           )
           ON CONFLICT (tenant_id, store_id, plan_year, plan_month, plan_type)
-          DO UPDATE SET status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
+          DO UPDATE SET plan_id = shift_plans.plan_id
           RETURNING plan_id, (xmax = 0) AS inserted
         `, [
           tenant_id, store_id, targetYear, targetMonth,
           planCode, planName, periodStart, periodEnd, GENERATION_TYPE.BATCH
-        ]));
+        ]);
 
         const { plan_id, inserted } = upsertResult.rows[0];
 

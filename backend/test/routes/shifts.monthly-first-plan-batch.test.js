@@ -12,7 +12,7 @@ vi.mock('axios', () => ({
   },
 }))
 
-const { query, transaction } = await import('../../src/config/database.js')
+const { query } = await import('../../src/config/database.js')
 const axios = (await import('axios')).default
 const { default: shiftsRoutes } = await import('../../src/routes/shifts.js')
 
@@ -32,15 +32,12 @@ function makeStores(...stores) {
 
 describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
   let app
-  let clientQueryMock
 
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.BATCH_API_KEY = BATCH_API_KEY
     process.env.LIFF_BACKEND_URL = 'https://liff-backend.example.com'
 
-    clientQueryMock = vi.fn()
-    transaction.mockImplementation(cb => cb({ query: clientQueryMock }))
     axios.post.mockResolvedValue({ data: { success: true } })
 
     app = buildApp()
@@ -128,8 +125,9 @@ describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
   })
 
   it('computes period_start/period_end/plan_code/plan_name and inserts an APPROVED empty plan', async () => {
-    query.mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
-    clientQueryMock.mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: true }] })
+    query
+      .mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
+      .mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: true }] })
 
     const res = await request(app)
       .post(ENDPOINT)
@@ -147,9 +145,11 @@ describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
       failed_notification: [],
     })
 
-    const [sql, params] = clientQueryMock.mock.calls[0]
+    const [sql, params] = query.mock.calls[1]
     expect(sql).toContain("'FIRST', 'APPROVED'")
     expect(sql).toContain('ON CONFLICT (tenant_id, store_id, plan_year, plan_month, plan_type)')
+    expect(sql).toContain('DO UPDATE SET plan_id = shift_plans.plan_id')
+    expect(sql).not.toContain('status = EXCLUDED.status')
     const [tenantId, storeId, planYear, planMonth, planCode, planName, periodStart, periodEnd, generationType] = params
     expect(tenantId).toBe(1)
     expect(storeId).toBe(5)
@@ -163,27 +163,30 @@ describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
 
     expect(axios.post).toHaveBeenCalledWith(
       'https://liff-backend.example.com/api/notification/first-plan-approved',
-      { tenant_id: 1, store_id: 5, plan_id: 111, year: 2026, month: 8 }
+      { tenant_id: 1, store_id: 5, plan_id: 111, year: 2026, month: 8 },
+      { timeout: 10000 }
     )
   })
 
   it('computes the last day of February correctly for a leap year', async () => {
-    query.mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 1 }))
-    clientQueryMock.mockResolvedValueOnce({ rows: [{ plan_id: 1, inserted: true }] })
+    query
+      .mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 1 }))
+      .mockResolvedValueOnce({ rows: [{ plan_id: 1, inserted: true }] })
 
     await request(app)
       .post(ENDPOINT)
       .set('x-batch-api-key', BATCH_API_KEY)
       .send({ target_year: 2028, target_month: 2 })
 
-    const [, params] = clientQueryMock.mock.calls[0]
+    const [, params] = query.mock.calls[1]
     expect(params[6]).toBe('2028-02-01')
     expect(params[7]).toBe('2028-02-29')
   })
 
   it('is idempotent: does not notify and reports skipped_already when the plan already exists', async () => {
-    query.mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
-    clientQueryMock.mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: false }] })
+    query
+      .mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
+      .mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: false }] })
 
     const res = await request(app)
       .post(ENDPOINT)
@@ -197,11 +200,11 @@ describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
   })
 
   it('only notifies newly-inserted stores, not stores that already existed', async () => {
-    query.mockResolvedValueOnce(makeStores(
-      { tenant_id: 1, store_id: 1 },
-      { tenant_id: 1, store_id: 2 }
-    ))
-    clientQueryMock
+    query
+      .mockResolvedValueOnce(makeStores(
+        { tenant_id: 1, store_id: 1 },
+        { tenant_id: 1, store_id: 2 }
+      ))
       .mockResolvedValueOnce({ rows: [{ plan_id: 10, inserted: true }] })
       .mockResolvedValueOnce({ rows: [{ plan_id: 20, inserted: false }] })
 
@@ -215,16 +218,17 @@ describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
     expect(axios.post).toHaveBeenCalledTimes(1)
     expect(axios.post).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ store_id: 1, plan_id: 10 })
+      expect.objectContaining({ store_id: 1, plan_id: 10 }),
+      expect.objectContaining({ timeout: 10000 })
     )
   })
 
   it('continues processing remaining stores when one store fails', async () => {
-    query.mockResolvedValueOnce(makeStores(
-      { tenant_id: 1, store_id: 1 },
-      { tenant_id: 1, store_id: 2 }
-    ))
-    clientQueryMock
+    query
+      .mockResolvedValueOnce(makeStores(
+        { tenant_id: 1, store_id: 1 },
+        { tenant_id: 1, store_id: 2 }
+      ))
       .mockRejectedValueOnce(new Error('connection timeout'))
       .mockResolvedValueOnce({ rows: [{ plan_id: 20, inserted: true }] })
 
@@ -239,8 +243,9 @@ describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
   })
 
   it('does not roll back the DB insert when the LINE notification fails, and reports failed_notification', async () => {
-    query.mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
-    clientQueryMock.mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: true }] })
+    query
+      .mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
+      .mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: true }] })
     axios.post.mockRejectedValueOnce(new Error('502 Bad Gateway'))
 
     const res = await request(app)
@@ -257,8 +262,9 @@ describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
 
   it('skips notification when LIFF_BACKEND_URL is not configured', async () => {
     delete process.env.LIFF_BACKEND_URL
-    query.mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
-    clientQueryMock.mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: true }] })
+    query
+      .mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
+      .mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: true }] })
 
     const res = await request(app)
       .post(ENDPOINT)
@@ -268,5 +274,22 @@ describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
     expect(res.status).toBe(200)
     expect(res.body.created).toEqual([{ tenant_id: 1, store_id: 5, plan_id: 111 }])
     expect(axios.post).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when target_year is far in the past or future', async () => {
+    const pastRes = await request(app)
+      .post(ENDPOINT)
+      .set('x-batch-api-key', BATCH_API_KEY)
+      .send({ target_year: 1999, target_month: 8 })
+
+    expect(pastRes.status).toBe(400)
+
+    const futureRes = await request(app)
+      .post(ENDPOINT)
+      .set('x-batch-api-key', BATCH_API_KEY)
+      .send({ target_year: 2999, target_month: 8 })
+
+    expect(futureRes.status).toBe(400)
+    expect(query).not.toHaveBeenCalled()
   })
 })

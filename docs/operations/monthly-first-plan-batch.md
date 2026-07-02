@@ -64,8 +64,10 @@ POST /api/shifts/plans/monthly-first-plan-batch
 ### 冪等性
 
 `ops.shift_plans` の一意制約 `(tenant_id, store_id, plan_year, plan_month, plan_type)` を利用した
-`INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING (xmax = 0) AS inserted` により、同月内で
-何度実行しても新規 INSERT された店舗のみ通知対象になる。
+`INSERT ... ON CONFLICT ... DO UPDATE SET plan_id = shift_plans.plan_id ... RETURNING (xmax = 0) AS inserted`
+（no-op self-update）により、同月内で何度実行しても新規 INSERT された店舗のみ通知対象になる。
+既存プランが存在する場合（`skipped_already`）、その `status` やその他のカラムは一切変更されない
+— 手動で `DRAFT` 等に変更済みのプランがあっても、バッチ実行によって `APPROVED` に上書きされることはない。
 
 ## 環境変数・シークレット設定手順
 
