@@ -10,6 +10,7 @@ import vectorStoreRoutes from './routes/vector-store.js'
 import holidaysRoutes from './routes/holidays.js'
 import liffRoutes from './routes/liff.js'
 import { appendLog } from './utils/logger.js'
+import { ensureShiftPlansUniqueConstraint } from './migrations/ensureShiftPlansUniqueConstraint.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -108,8 +109,11 @@ app.use('/api/holidays', holidaysRoutes)
 app.use('/api/liff', liffRoutes)
 
 // Server startup
-function startServer() {
+async function startServer() {
   try {
+    // 本番DBのスキーマドリフト補完（起動時に冪等実行、失敗しても起動は継続）
+    await ensureShiftPlansUniqueConstraint()
+
     // サーバー起動
     app.listen(PORT, '0.0.0.0', () => {
       const startupMsg = `🚀 Backend server running on port ${PORT}`
