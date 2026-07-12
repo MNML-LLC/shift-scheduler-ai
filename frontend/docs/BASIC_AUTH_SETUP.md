@@ -161,6 +161,24 @@ BASIC_AUTH_SESSION_DURATION=28800000
 
 ---
 
+### BASIC_AUTH_SECRET
+
+セッショントークンの HMAC-SHA256 署名に使う秘密鍵です。**必須**で、フォールバックはありません。未設定の場合、セッショントークンの発行・検証が一切できず（毎回 Basic 認証を要求）、サーバーログに警告が出力されます。
+
+32byte 以上のランダムな文字列を推奨します。生成例:
+
+```bash
+openssl rand -base64 32
+```
+
+```bash
+BASIC_AUTH_SECRET=your_generated_random_secret_here
+```
+
+このシークレットを変更・再生成すると、既存のセッションはすべて無効になり、再ログインが必要になります。
+
+---
+
 ## ローカル環境での設定
 
 **ローカル開発環境ではBasic認証は動作しません。** Vercel環境（Staging/Production）でのみ有効になります。
@@ -187,6 +205,7 @@ BASIC_AUTH_SESSION_DURATION=28800000
 | `BASIC_AUTH_ENABLED` | `true` | Preview |
 | `BASIC_AUTH_CREDENTIALS` | `[{"username":"staging-user","password":"YourStagingPassword123!"}]` | Preview |
 | `BASIC_AUTH_SESSION_DURATION` | `3600000` | Preview |
+| `BASIC_AUTH_SECRET` | `openssl rand -base64 32` の出力など | Preview |
 
 **設定手順:**
 
@@ -205,6 +224,7 @@ BASIC_AUTH_SESSION_DURATION=28800000
 | `BASIC_AUTH_ENABLED` | `true` | Production |
 | `BASIC_AUTH_CREDENTIALS` | `[{"username":"prod-admin","password":"YourProductionPassword123!"}]` | Production |
 | `BASIC_AUTH_SESSION_DURATION` | `3600000` | Production |
+| `BASIC_AUTH_SECRET` | `openssl rand -base64 32` の出力など（Preview とは別の値を推奨） | Production |
 
 **設定手順:**
 
