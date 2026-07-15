@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import { authenticate, isPublicPath } from './middleware/authenticate.js'
 import openaiRoutes from './routes/openai.js'
 import csvRoutes from './routes/csv.js'
 import masterRoutes from './routes/master.js'
@@ -95,6 +96,14 @@ app.get('/api/health', (req, res) => {
       host: process.env.PGHOST || 'unknown'
     }
   })
+})
+
+// API認証（/api/health・/api/liff・バッチ専用エンドポイントは除外）
+app.use((req, res, next) => {
+  if (isPublicPath(req.path)) {
+    return next()
+  }
+  return authenticate(req, res, next)
 })
 
 // Routes

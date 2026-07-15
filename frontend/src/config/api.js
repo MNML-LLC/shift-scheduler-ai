@@ -60,3 +60,12 @@ export const API_ENDPOINTS = {
 export const getApiUrl = endpoint => {
   return `${BACKEND_API_URL}${endpoint}`
 }
+
+// バックエンドAPI認証キー（設定時は x-api-key ヘッダーで送信）
+// backend/docs/API_AUTHENTICATION.md 参照
+const BACKEND_API_KEY = import.meta.env.VITE_BACKEND_API_KEY
+
+// バックエンドAPI呼び出しに付与する認証ヘッダー（未設定時は空オブジェクト）
+export const getAuthHeaders = () => {
+  return BACKEND_API_KEY ? { 'x-api-key': BACKEND_API_KEY } : {}
+}
