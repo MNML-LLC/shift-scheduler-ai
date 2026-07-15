@@ -1,6 +1,7 @@
 /**
  * HTTP通信ユーティリティ
  */
+import { getAuthHeaders } from '../config/api'
 
 /**
  * fetchのラッパー関数（エラーハンドリング付き）
@@ -13,6 +14,7 @@ export const fetchJSON = async (url, options = {}) => {
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
+        ...getAuthHeaders(),
         ...options.headers,
       },
       ...options,
