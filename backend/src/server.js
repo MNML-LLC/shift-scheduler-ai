@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import { corsOptions, corsErrorHandler } from './config/corsOptions.js'
 import openaiRoutes from './routes/openai.js'
 import csvRoutes from './routes/csv.js'
 import masterRoutes from './routes/master.js'
@@ -16,7 +17,8 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 // Middleware
-app.use(cors())
+app.use(cors(corsOptions))
+app.use(corsErrorHandler)
 app.use(express.json({ limit: '50mb' }))
 
 // Health check endpoint
