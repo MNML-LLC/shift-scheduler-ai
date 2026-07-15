@@ -15,7 +15,7 @@ class OpenAIClientService {
     const {
       maxRetries = 3,
       temperature = 0.7,
-      model = 'gpt-4-turbo-preview'
+      model = process.env.OPENAI_MODEL || 'gpt-4o'
     } = options
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {

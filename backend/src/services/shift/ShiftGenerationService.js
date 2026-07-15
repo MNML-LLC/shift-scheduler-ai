@@ -45,10 +45,11 @@ class ShiftGenerationService {
       const prompt = this.promptBuilder.buildPrompt(masterData)
 
       // フェーズ3: AI生成
+      const model = options.model || process.env.OPENAI_MODEL || 'gpt-4o'
       const aiResponse = await this.aiClient.generateShifts(prompt, {
         maxRetries: options.maxRetries || 3,
         temperature: options.temperature || 0.7,
-        model: options.model || 'gpt-4-turbo-preview'
+        model
       })
 
       // フェーズ4: 応答パース
@@ -75,7 +76,7 @@ class ShiftGenerationService {
           store_id: storeId,
           year,
           month,
-          model: options.model || 'gpt-4-turbo-preview',
+          model,
           staff_count: masterData.staff.length,
           pattern_count: masterData.shiftPatterns.length,
           parse_errors: parsed.errors.length
