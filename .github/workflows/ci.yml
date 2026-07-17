@@ -63,6 +63,10 @@ jobs:
 
       - name: Run tests
         run: cd backend && npm run test -- --run
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          PORT: '3001'
+          NODE_ENV: test
 
       - name: Syntax check
         run: cd backend && node --check src/server.js
