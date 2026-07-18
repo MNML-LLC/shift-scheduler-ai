@@ -1,0 +1,44 @@
+# Railway APIトークン有効期限チェック（週次）
+#
+# ⚠️ このファイルはテンプレートです。有効化するには:
+#   1. このファイルを .github/workflows/railway-token-expiry-check.yml にコピー
+#      cp scripts/token-monitor/railway-token-expiry-check.yml.template .github/workflows/railway-token-expiry-check.yml
+#   2. GitHub Secrets / Variables を設定（詳細は scripts/token-monitor/README.md 参照）
+#
+# 🔧 必要な GitHub Secrets:
+#   - RAILWAY_TOKEN: Railway APIトークン
+#   - SLACK_WEBHOOK_URL: Slack Incoming Webhook URL（通知先チャンネル）
+#
+# 🔧 必要な GitHub Variables (Settings > Secrets and variables > Actions > Variables):
+#   - RAILWAY_TOKEN_EXPIRES_AT: トークン期限日（YYYY-MM-DD）
+#     ※ トークンをローテーションするたびに必ず更新すること
+
+name: Railway Token Expiry Check
+
+on:
+  schedule:
+    # 毎週月曜 09:00 JST（UTC 00:00）に実行
+    - cron: '0 0 * * 1'
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  check-token:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js のセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: トークン有効期限チェック
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RAILWAY_TOKEN_EXPIRES_AT: ${{ vars.RAILWAY_TOKEN_EXPIRES_AT }}
+          ALERT_THRESHOLD_DAYS: '30'
+        run: node scripts/token-monitor/check-railway-token.mjs
