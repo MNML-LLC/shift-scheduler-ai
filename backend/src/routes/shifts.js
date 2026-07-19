@@ -2,12 +2,11 @@ import express from 'express';
 import axios from 'axios';
 import crypto from 'crypto';
 import { query, transaction } from '../config/database.js';
-import DEFAULT_CONFIG from '../config/defaults.js';
-import { SHIFT_PREFERENCE_STATUS, VALID_PREFERENCE_STATUSES, GENERATION_TYPE } from '../config/constants.js';
+import { GENERATION_TYPE } from '../config/constants.js';
 import { VALIDATION_MESSAGES } from '../config/validation.js';
 import ShiftGenerationService from '../services/shift/ShiftGenerationService.js';
 import ConstraintValidationService from '../services/shift/ConstraintValidationService.js';
-import { calculateWorkHours, calculateWorkHoursFixed, formatDateToYYYYMMDD } from '../utils/timeUtils.js';
+import { calculateWorkHours, formatDateToYYYYMMDD } from '../utils/timeUtils.js';
 
 const router = express.Router();
 
@@ -77,7 +76,7 @@ async function getShiftsData(tenantId, { year, month, storeId = null, planType =
   }
 
   if (planType) {
-    planSql += ` AND plan_type = $${paramIndex++}`;
+    planSql += ` AND plan_type = $${paramIndex}`;
     planParams.push(planType);
   }
 
@@ -735,17 +734,15 @@ router.post('/plans/generate', async (req, res) => {
 
     // 前月のSECOND案を取得（共通関数を使用）
     const { plans: sourcePlans, shifts: sourceShifts } = await getPreviousSecondShifts(tenant_id, year, month, store_id);
+    const { year: prevYear, month: prevMonth } = getPreviousMonth(year, month);
 
     if (sourcePlans.length === 0) {
-      const { year: prevYear, month: prevMonth } = getPreviousMonth(year, month);
       return res.status(404).json({
         success: false,
         error: 'No SECOND plan found for previous month',
         message: `${prevYear}年${prevMonth}月の第2案（確定版）が存在しません。第2案を作成・承認してからコピーしてください。`
       });
     }
-
-    const sourcePlan = sourcePlans[0];
 
     if (sourceShifts.length === 0) {
       return res.status(404).json({
@@ -2997,7 +2994,7 @@ router.put('/plans/:plan_id/status', async (req, res) => {
     }
 
     // ステータスを更新
-    const updateResult = await query(
+    await query(
       `UPDATE ops.shift_plans
        SET status = $1, updated_at = CURRENT_TIMESTAMP
        WHERE plan_id = $2
@@ -3168,7 +3165,6 @@ router.post('/plans/copy-from-previous', async (req, res) => {
         const dayOfMonth = shiftDate.getDate();
 
         // その月の1日から数えて、その曜日が何回目に現れるか
-        const firstDayOfMonth = new Date(source_year, source_month - 1, 1);
         let weekCount = 0;
         for (let d = 1; d <= dayOfMonth; d++) {
           const checkDate = new Date(source_year, source_month - 1, d);
@@ -3220,7 +3216,6 @@ router.post('/plans/copy-from-previous', async (req, res) => {
           // 第1週の同じ曜日にフォールバックする
           const match = key.match(/week(\d+)_dow(\d+)/);
           if (match) {
-            const weekNumber = match[1];
             const dayOfWeek = match[2];
             const fallbackKey = `week1_dow${dayOfWeek}`;
             targetDay = targetMapping[fallbackKey];
@@ -3403,8 +3398,7 @@ router.post('/plans/copy-from-previous-all-stores', async (req, res) => {
     }
 
     // 前月のSECOND案を一括取得（全店舗分）- 共通関数を使用
-    const { plans: allSourcePlans, shifts: allSourceShifts, plansByStoreId: sourcePlanByStoreId } = await getPreviousSecondShifts(tenant_id, target_year, target_month);
-    const { year: prevYear, month: prevMonth } = getPreviousMonth(target_year, target_month);
+    const { shifts: allSourceShifts, plansByStoreId: sourcePlanByStoreId } = await getPreviousSecondShifts(tenant_id, target_year, target_month);
 
     const createdPlans = [];
     const errors = [];
@@ -3618,8 +3612,7 @@ router.post('/plans/fetch-previous-data-all-stores', async (req, res) => {
     }
 
     // 前月のSECOND案を一括取得（全店舗分）- 共通関数を使用
-    const { plans: allSourcePlans, shifts: allSourceShifts, plansByStoreId: sourcePlanByStoreId } = await getPreviousSecondShifts(tenant_id, target_year, target_month);
-    const { year: prevYear, month: prevMonth } = getPreviousMonth(target_year, target_month);
+    const { shifts: allSourceShifts, plansByStoreId: sourcePlanByStoreId } = await getPreviousSecondShifts(tenant_id, target_year, target_month);
 
     // 曜日ベースで対象月に変換（特定の曜日が何回目に出現するかをカウント）
     const getWeekInfo = (date) => {

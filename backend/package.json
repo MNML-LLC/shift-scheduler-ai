@@ -8,6 +8,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "vitest run",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
@@ -27,7 +29,10 @@
     "pg": "^8.13.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
     "supertest": "^7.1.4",
     "vitest": "^3.2.4"
   }

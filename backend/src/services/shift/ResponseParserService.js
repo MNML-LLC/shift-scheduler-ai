@@ -11,14 +11,14 @@ class ResponseParserService {
    */
   async parseAndValidate(aiResponse, masterData) {
     const errors = []
-    let parsedData = null
+    let parsedData
 
     // 1. JSON パース
     try {
       parsedData = JSON.parse(aiResponse)
     } catch (error) {
       console.error('[ResponseParser] JSONパースエラー:', error.message)
-      throw new Error(`AI応答のパースに失敗しました: ${error.message}`)
+      throw new Error(`AI応答のパースに失敗しました: ${error.message}`, { cause: error })
     }
 
     // 2. 必須フィールド確認

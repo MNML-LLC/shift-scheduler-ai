@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { openai, getOpenAIHeaders, OPENAI_API_BASE, isOpenAIAvailable } from '../../src/services/openaiService.js'
 
 describe('openaiService', () => {

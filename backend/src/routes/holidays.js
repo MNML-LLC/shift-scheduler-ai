@@ -80,7 +80,7 @@ async function getHolidays() {
     holidaysCache = await fetchHolidaysFromGovernment()
     cacheTimestamp = now
     return holidaysCache
-  } catch (error) {
+  } catch {
     // エラー時はフォールバック（最低限の祝日）
     console.error('祝日データ取得失敗、フォールバックデータを使用')
     return getFallbackHolidays()

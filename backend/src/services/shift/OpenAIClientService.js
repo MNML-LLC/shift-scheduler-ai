@@ -38,7 +38,7 @@ class OpenAIClientService {
         console.error(`[OpenAIClient] エラー (試行 ${attempt}/${maxRetries}):`, error.message)
 
         if (attempt === maxRetries) {
-          throw new Error(`AI生成に失敗しました (${maxRetries}回試行): ${error.message}`)
+          throw new Error(`AI生成に失敗しました (${maxRetries}回試行): ${error.message}`, { cause: error })
         }
 
         // 指数バックオフ (1秒、2秒、4秒)
