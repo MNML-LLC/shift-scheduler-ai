@@ -1,11 +1,8 @@
 import express from 'express'
 import fs from 'fs'
-import os from 'os'
-import path from 'path'
 import { openai, getOpenAIHeaders, OPENAI_API_BASE, isOpenAIAvailable } from '../services/openaiService.js'
 import { convertCSVToJSON, deleteTempFile } from '../services/fileService.js'
 import { appendLog } from '../utils/logger.js'
-import { query } from '../config/database.js'
 
 const router = express.Router()
 

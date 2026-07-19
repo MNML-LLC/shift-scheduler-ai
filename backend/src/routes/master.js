@@ -841,7 +841,7 @@ router.get('/shift-validation-rules', async (req, res) => {
  */
 router.get('/all', async (req, res) => {
   try {
-    const { tenant_id = 1, store_id } = req.query;
+    const { tenant_id = 1 } = req.query;
 
     const [
       stores,

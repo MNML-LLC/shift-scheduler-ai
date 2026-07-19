@@ -326,7 +326,6 @@ class ConstraintValidationService {
   getWeekKey(date) {
     const year = date.getFullYear()
     const startOfYear = new Date(year, 0, 1)
-    const dayOfWeek = date.getDay()
     const daysSinceStartOfYear = Math.floor((date - startOfYear) / (1000 * 60 * 60 * 24))
     const weekNumber = Math.floor((daysSinceStartOfYear + startOfYear.getDay()) / 7) + 1
 
