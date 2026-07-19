@@ -3,7 +3,8 @@
  * Railway APIトークン有効期限チェック & Slack通知スクリプト
  *
  * 動作:
- *   1. Railway GraphQL API に対してトークンの有効性を確認（me クエリ）
+ *   1. Railway GraphQL API に対してトークンの有効性を確認（projects クエリ。
+ *      ワークスペーストークンでは me クエリが Not Authorized になるため）
  *   2. RAILWAY_TOKEN_EXPIRES_AT（YYYY-MM-DD）から残り日数を計算
  *   3. トークンが無効、または残り日数が閾値（デフォルト30日）以下なら
  *      Slack Incoming Webhook へアラートを送信
@@ -55,7 +56,7 @@ async function checkTokenValidity(token) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ query: '{ me { name email } }' })
+      body: JSON.stringify({ query: '{ projects { edges { node { id } } } }' })
     })
     if (res.status === 401 || res.status === 403) {
       return { valid: false, reason: `認証エラー (HTTP ${res.status})` }
@@ -71,7 +72,7 @@ async function checkTokenValidity(token) {
       }
       return { valid: false, reason: `GraphQLエラー: ${message}` }
     }
-    return { valid: true, account: json.data?.me ?? null }
+    return { valid: true, projectCount: json.data?.projects?.edges?.length ?? null }
   } catch (err) {
     return { valid: false, reason: `接続エラー: ${err.message}` }
   }
@@ -138,8 +139,8 @@ async function main() {
     process.exit(1)
   }
 
-  const account = validity.account
-  console.log(`✅ トークンは有効です${account?.name ? `（アカウント: ${account.name}）` : ''}`)
+  const { projectCount } = validity
+  console.log(`✅ トークンは有効です${projectCount !== null ? `（プロジェクト数: ${projectCount}）` : ''}`)
 
   if (daysRemaining === null) {
     console.error('❌ RAILWAY_TOKEN_EXPIRES_AT が未設定または形式不正です（YYYY-MM-DD で設定してください）')
