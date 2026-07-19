@@ -68,5 +68,8 @@ jobs:
           PORT: '3001'
           NODE_ENV: test
 
+      - name: Run ESLint
+        run: cd backend && npm run lint
+
       - name: Syntax check
         run: cd backend && node --check src/server.js
