@@ -988,7 +988,7 @@ router.post('/plans/generate', async (req, res) => {
  *   month: number,
  *   created_by?: number,
  *   options?: {
- *     model?: string (default: 'gpt-4-turbo-preview'),
+ *     model?: string (default: process.env.OPENAI_MODEL || 'gpt-4o'),
  *     temperature?: number (default: 0.7),
  *     maxRetries?: number (default: 3)
  *   }
@@ -1083,7 +1083,7 @@ router.post('/plans/generate-ai', async (req, res) => {
         `, [
           tenant_id, store_id, year, month,
           planCode, planName, periodStart, periodEnd,
-          options.model || 'gpt-4-turbo-preview',
+          options.model || process.env.OPENAI_MODEL || 'gpt-4o',
           created_by || null
         ]);
 
