@@ -85,6 +85,71 @@ describe('authenticate middleware', () => {
   })
 })
 
+describe('server wiring (public path exclusion)', () => {
+  const ORIGINAL_ENV = { ...process.env }
+
+  function buildServerLikeApp() {
+    const app = express()
+    app.use((req, res, next) => {
+      if (isPublicPath(req.path)) {
+        return next()
+      }
+      return authenticate(req, res, next)
+    })
+    app.get('/api/health', (req, res) => res.json({ success: true, public: true }))
+    app.get('/api/liff/staff-info', (req, res) => res.json({ success: true, liff: true }))
+    app.get('/api/master/stores', (req, res) => res.json({ success: true }))
+    app.get('/api/shifts/plans', (req, res) => res.json({ success: true }))
+    app.get('/api/analytics/payroll', (req, res) => res.json({ success: true }))
+    return app
+  }
+
+  beforeEach(() => {
+    process.env.API_AUTH_ENABLED = 'true'
+    process.env.API_AUTH_KEYS = 'test-key-1'
+  })
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV }
+  })
+
+  it('keeps /api/health reachable without credentials', async () => {
+    const res = await request(buildServerLikeApp()).get('/api/health')
+
+    expect(res.status).toBe(200)
+    expect(res.body.public).toBe(true)
+  })
+
+  it('leaves /api/liff routes untouched by the API key middleware', async () => {
+    const res = await request(buildServerLikeApp()).get('/api/liff/staff-info')
+
+    expect(res.status).toBe(200)
+    expect(res.body.liff).toBe(true)
+  })
+
+  it('rejects unauthenticated requests to admin routes with 401', async () => {
+    const app = buildServerLikeApp()
+
+    for (const path of ['/api/master/stores', '/api/shifts/plans', '/api/analytics/payroll']) {
+      const res = await request(app).get(path)
+
+      expect(res.status).toBe(401)
+      expect(res.body).toEqual({ success: false, error: 'Unauthorized' })
+    }
+  })
+
+  it('allows authenticated requests to admin routes', async () => {
+    const app = buildServerLikeApp()
+
+    for (const path of ['/api/master/stores', '/api/shifts/plans', '/api/analytics/payroll']) {
+      const res = await request(app).get(path).set('x-api-key', 'test-key-1')
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({ success: true })
+    }
+  })
+})
+
 describe('isPublicPath', () => {
   it('includes /api/health, /api/liff, and the batch endpoint', () => {
     expect(PUBLIC_PATH_PREFIXES).toContain('/api/health')

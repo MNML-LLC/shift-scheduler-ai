@@ -75,7 +75,7 @@ VITE_BACKEND_API_KEY=<API_AUTH_KEYS と同じ値>
 
 ## ロールアウト手順（本番環境）
 
-デグレを避けるため、以下の順番で段階的に有効化すること。
+デグレを避けるため、まず staging 環境で以下の手順を一通り検証してから本番に適用すること。
 
 1. バックエンドに `API_AUTH_KEYS` を設定した状態でデプロイする（`API_AUTH_ENABLED=false` のまま）。
 2. フロントエンドに同じ値を `VITE_BACKEND_API_KEY` として設定し、デプロイする。
