@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import { authenticate, isPublicPath } from './middleware/authenticate.js'
+import { createOpenaiLimiter, createGeneralLimiter } from './middleware/rateLimit.js'
 import { corsOptions, corsErrorHandler } from './config/corsOptions.js'
 import openaiRoutes from './routes/openai.js'
 import csvRoutes from './routes/csv.js'
@@ -16,6 +17,9 @@ import { ensureShiftPlansUniqueConstraint } from './migrations/ensureShiftPlansU
 
 const app = express()
 const PORT = process.env.PORT || 3001
+
+// Railway のプロキシ配下でクライアントの実IPを req.ip に反映させる（レート制限のIP単位カウントに必要）
+app.set('trust proxy', 1)
 
 // Middleware
 app.use(cors(corsOptions))
@@ -108,8 +112,9 @@ app.use((req, res, next) => {
   return authenticate(req, res, next)
 })
 
-// Routes
-app.use('/api/openai', openaiRoutes)
+// Routes（レート制限は認証後に適用。/api/openai は OpenAI 利用料保護のため厳しめ）
+app.use('/api/openai', createOpenaiLimiter(), openaiRoutes)
+app.use('/api', createGeneralLimiter())
 app.use('/api', csvRoutes)
 app.use('/api/master', masterRoutes)
 app.use('/api/shifts', shiftsRoutes)
