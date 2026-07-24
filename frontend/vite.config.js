@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
@@ -28,9 +28,11 @@ export default defineConfig(() => {
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-popover', 'framer-motion'],
+        advancedChunks: {
+          groups: [
+            { name: 'vendor', test: /\/node_modules\/(react|react-dom)\// },
+            { name: 'ui', test: /\/node_modules\/(@radix-ui\/react-dialog|@radix-ui\/react-popover|framer-motion)\// },
+          ]
         }
       }
     }
