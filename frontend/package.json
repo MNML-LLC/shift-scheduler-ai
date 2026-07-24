@@ -93,7 +93,7 @@
     "react-hook-form": "^7.56.3",
     "react-rnd": "^10.5.2",
     "react-router-dom": "^7.9.5",
-    "recharts": "^2.15.3",
+    "recharts": "^3.10.0",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "^4.3.3",
