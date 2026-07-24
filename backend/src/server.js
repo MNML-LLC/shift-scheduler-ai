@@ -11,6 +11,7 @@ import tenantsRoutes from './routes/tenants.js'
 import vectorStoreRoutes from './routes/vector-store.js'
 import holidaysRoutes from './routes/holidays.js'
 import liffRoutes from './routes/liff.js'
+import healthRoutes from './routes/health.js'
 import { appendLog } from './utils/logger.js'
 import { ensureShiftPlansUniqueConstraint } from './migrations/ensureShiftPlansUniqueConstraint.js'
 
@@ -23,82 +24,7 @@ app.use(corsErrorHandler)
 app.use(express.json({ limit: '50mb' }))
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
-  // 環境変数を取得
-  const appEnv = process.env.APP_ENV // local/stg/prd
-  const dbEnv = process.env.DB_ENV // stg/prd
-  const railwayEnv = process.env.RAILWAY_ENVIRONMENT_NAME
-
-  // BE環境判定: APP_ENVを優先、なければRAILWAY_ENVIRONMENT_NAMEで判定
-  const getEnvironment = () => {
-    // APP_ENVが明示的に設定されている場合はそれを使用
-    if (appEnv) {
-      return appEnv.toUpperCase()
-    }
-
-    // Railwayの環境変数で判定
-    if (!railwayEnv) {
-      return 'LOCAL'
-    }
-
-    if (railwayEnv === 'production') {
-      return 'PRD'
-    } else {
-      return 'STG'
-    }
-  }
-
-  // DB環境判定: DB_ENVを優先、なければURLで判定
-  const getDbEnvironment = () => {
-    // DB_ENVが明示的に設定されている場合はそれを使用
-    if (dbEnv) {
-      return dbEnv.toUpperCase()
-    }
-
-    const dbUrl = process.env.DATABASE_URL || ''
-
-    // ローカルDBの場合（DBはSTG/PRDのみだが念のため）
-    if (dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')) {
-      return 'LOCAL'
-    }
-
-    // Railway DBの場合
-    if (dbUrl.includes('railway.app') || dbUrl.includes('railway') || dbUrl.includes('rlwy.net')) {
-      // 明示的に本番DB用の識別子がある場合
-      if (dbUrl.includes('-production-') || dbUrl.includes('production.')) {
-        return 'PRD'
-      }
-
-      // RAILWAY_ENVIRONMENT_NAMEで判定
-      if (railwayEnv === 'production') {
-        return 'PRD'
-      } else if (railwayEnv) {
-        return 'STG'
-      }
-
-      // デフォルトはSTG（PRDよりSTGの方が安全）
-      return 'STG'
-    }
-
-    // その他の場合
-    return 'UNKNOWN'
-  }
-
-  res.json({
-    success: true,
-    backend: {
-      environment: getEnvironment(),
-      hostname: req.hostname,
-      port: PORT,
-      nodeEnv: process.env.NODE_ENV || 'development'
-    },
-    database: {
-      environment: getDbEnvironment(),
-      connected: true, // TODO: 実際のDB接続チェック
-      host: process.env.PGHOST || 'unknown'
-    }
-  })
-})
+app.use('/api/health', healthRoutes)
 
 // API認証（/api/health・/api/liff・バッチ専用エンドポイントは除外）
 app.use((req, res, next) => {
