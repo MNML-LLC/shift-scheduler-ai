@@ -78,7 +78,6 @@
     "express": "^5.1.0",
     "form-data": "^4.0.4",
     "framer-motion": "^12.15.0",
-    "html2pdf.js": "^0.12.1",
     "input-otp": "^1.4.2",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.8",
@@ -97,8 +96,7 @@
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "^4.3.3",
-    "vaul": "^1.1.2",
-    "zod": "^3.24.4"
+    "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
