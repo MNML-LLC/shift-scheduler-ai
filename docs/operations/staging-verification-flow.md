@@ -8,22 +8,30 @@
 - 本ドキュメントが本フローの SoT（Source of Truth）。
 - main 宛 PR には `.github/pull_request_template.md` により検証エビデンス欄が必須表示される。
 
+## 用語の区別
+
+本ドキュメントで「Railway」「Vercel」が指すものは次の通り:
+
+- **Railway staging / production (backend)** — アプリサーバー（Express API）。
+- **Railway staging / production (DB / PostgreSQL)** — Postgres インスタンス（staging: `switchyard:26491` / 本番: `mainline:50142`）。
+- **Vercel staging / Production (frontend)** — React SPA。**frontend のみ** Vercel にデプロイされる（`backend/vercel.json` はレガシーで、backend は Vercel にデプロイされない）。
+
 ## ブランチ → 環境の対応（一方向昇格）
 
 | ブランチ | デプロイ先 | DB | デプロイ方法 |
 |---|---|---|---|
 | `feature/*` / `fix/*` 等 | Vercel Preview（PR 時） | — | PR 作成で自動（既存 deploy.yml） |
-| `staging` | Railway staging + Vercel staging | **staging DB `switchyard:26491`** | `staging` push で**自動** |
-| `main` | Railway production + Vercel Production | **本番DB `mainline:50142`** | `main` push で自動（`vercel deploy --prod`） |
+| `staging` | Railway staging (backend + DB) + Vercel staging (frontend) | **staging DB `switchyard:26491`** | `staging` push で**自動** |
+| `main` | Railway production (backend + DB) + Vercel Production (frontend) | **本番DB `mainline:50142`** | `main` push で自動（`vercel deploy --prod`） |
 
 昇格は一方向のみ: `feature/*` → `staging` → `main`。逆流・スキップは不可
 （hotfix は例外的に `main` から切るが、マージ後 `staging` へバックポートする）。
 
 ## staging への反映方法 = 自動デプロイ
 
-- **Railway**: staging 環境のデプロイ元ブランチを `staging` に設定（ダッシュボード設定。deploy.yml では扱わない）。
+- **Railway (backend)**: staging 環境のデプロイ元ブランチを `staging` に設定（ダッシュボード設定。deploy.yml では扱わない）。
   `staging` への push で backend が自動デプロイされる。
-- **Vercel**: `.github/workflows/deploy.yml` の staging job により、`staging` への push で
+- **Vercel (frontend)**: `.github/workflows/deploy.yml` の staging job により、`staging` への push で
   `vercel deploy`（非 production）を実行し、staging 固定エイリアスを付与する。
 
 ### 手動フォールバック（自動デプロイが未配線・不調のとき）
@@ -48,7 +56,7 @@ vercel alias set <deployment-url> <staging-alias-domain> --token=$VERCEL_TOKEN
 1. **環境安全確認（最重要）**
    `GET {staging}/api/health` が 200 で、レスポンスの
    `database.connected: true` かつ `database.host` に `switchyard` を含むことを確認する。
-   **`database.host` に `mainline`（本番DB）が現れたら即中断**し、Railway staging の
+   **`database.host` に `mainline`（本番DB）が現れたら即中断**し、Railway staging (backend) の
    `DATABASE_URL` / `PGHOST` 設定を修正するまで検証を再開しない（#81 の production ガードと同型）。
 2. **主要画面表示**
    トップ / シフトカレンダー / ダッシュボードが描画・操作可能であること。
@@ -78,8 +86,8 @@ docs のみの変更等で staging 検証が不要な場合は、PR テンプレ
 
 即時性の高い順に実施する:
 
-1. **Railway**: ダッシュボードから直前の正常リビジョンを Redeploy（backend）。
-2. **Vercel**: Instant Rollback で直前の Production デプロイに切り戻し（frontend）。
+1. **Railway (backend)**: ダッシュボードから直前の正常リビジョンを Redeploy。
+2. **Vercel (frontend)**: Instant Rollback で直前の Production デプロイに切り戻し。
 3. **コード**: 問題のコミットを `git revert` し、通常フロー（staging 検証 → main）で反映する。
    ※ 緊急時のみ hotfix ブランチを `main` から切ってよいが、マージ後 `staging` へバックポートする。
 
@@ -94,8 +102,8 @@ docs のみの変更等で staging 検証が不要な場合は、PR テンプレ
 
 実装・運用開始前に M層/ops が確認・設定する:
 
-1. Railway staging 環境のデプロイ元ブランチが `staging` になっているか（未設定なら設定、不可なら手動運用に切替）。
-2. Railway staging の `DATABASE_URL` が staging DB `switchyard:26491` を指しているか
+1. Railway staging (backend) のデプロイ元ブランチが `staging` になっているか（未設定なら設定、不可なら手動運用に切替）。
+2. Railway staging (backend) の `DATABASE_URL` が staging DB `switchyard:26491` を指しているか
    （#81 で共有変数 `STAGING_DATABASE_URL` 化済み・要再確認）。
 3. Vercel staging エイリアスの `VITE_API_URL` に staging backend URL が設定済みか。
 4. `main` ブランチ保護（直接 push 禁止・レビュー必須・CI 必須）が有効か。

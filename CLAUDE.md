@@ -19,7 +19,7 @@ This file provides guidance for Claude (claude-code-action) when working in this
 ```
 shift-scheduler-ai/
 ├── frontend/       # React 19 + Vite SPA (deployed to Vercel)
-├── backend/        # Node.js + Express API (deployed to Vercel)
+├── backend/        # Node.js + Express API (deployed to Railway)
 ├── scripts/        # DB setup, migration, debug, and backup scripts
 ├── docs/           # Architecture docs, design docs, guides
 └── fixtures/       # Demo/test data (CSV)
@@ -165,7 +165,7 @@ Merge flow: feature branch → `staging` (review + integration test) → `main` 
 
 Key points:
 
-- Branch → environment: `feature/* · fix/*` → Vercel Preview (on PR) / `staging` → Railway staging + Vercel staging (staging DB) / `main` → production (production DB).
+- Branch → environment: `feature/* · fix/*` → Vercel Preview (on PR) / `staging` → Railway staging (backend + DB) + Vercel staging (frontend) / `main` → production (production DB).
 - Pushing to `staging` deploys automatically; promotion `staging` → `main` is a **manual PR** gated on the verification checklist.
 - Verification checklist (run on staging, required before merging to `main`):
   1. `GET {staging}/api/health` → 200, `database.connected: true`, `database.host` contains `switchyard` — **abort immediately if `mainline` (production DB) appears**.
@@ -181,9 +181,17 @@ Key points:
 | Target | Platform | Notes |
 |---|---|---|
 | Frontend SPA | Vercel | Config: `frontend/vercel.json` |
-| Backend API | Vercel | Config: `backend/vercel.json` |
+| Backend API | Railway | `backend/vercel.json` is legacy — the API no longer deploys to Vercel (verified via `/api/health`) |
 | Database | Railway (PostgreSQL 15+) | Connection via `DATABASE_URL` env var |
 | DB Backup | SharePoint | Via `scripts/backup/` + GitHub Actions workflow |
+
+### Deployment Environments
+
+| Component | Staging | Production |
+|---|---|---|
+| Frontend (React SPA) | Vercel Preview / staging alias | Vercel Production |
+| Backend API (Express) | Railway staging (`shift-scheduler-ai` staging env) | Railway production (`shift-scheduler-ai-production.up.railway.app`) |
+| Database (PostgreSQL) | Railway staging (`humble-manifestation` / `switchyard:26491`) | Railway production (`lucky-appreciation` / `mainline:50142`) |
 
 ---
 
