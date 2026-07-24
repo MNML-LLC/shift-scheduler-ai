@@ -157,6 +157,25 @@ Merge flow: feature branch → `staging` (review + integration test) → `main` 
 
 ---
 
+## Staging Verification Flow
+
+**Zero-production-impact principle**: every change must be verified on the staging environment before it reaches production. The full runbook is the source of truth:
+
+→ [`docs/operations/staging-verification-flow.md`](docs/operations/staging-verification-flow.md)
+
+Key points:
+
+- Branch → environment: `feature/* · fix/*` → Vercel Preview (on PR) / `staging` → Railway staging + Vercel staging (staging DB) / `main` → production (production DB).
+- Pushing to `staging` deploys automatically; promotion `staging` → `main` is a **manual PR** gated on the verification checklist.
+- Verification checklist (run on staging, required before merging to `main`):
+  1. `GET {staging}/api/health` → 200, `database.connected: true`, `database.host` contains `switchyard` — **abort immediately if `mainline` (production DB) appears**.
+  2. Main screens render (top / shift calendar / dashboard).
+  3. One successful shift generation (small tenant, one month).
+  4. Visual check of the changed functionality.
+- PRs targeting `main` must fill in the "staging 検証結果" section of `.github/pull_request_template.md` with URLs, JST timestamps, and results. Docs-only changes may state a reason for skipping instead.
+
+---
+
 ## Deployment
 
 | Target | Platform | Notes |
