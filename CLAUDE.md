@@ -19,7 +19,7 @@ This file provides guidance for Claude (claude-code-action) when working in this
 ```
 shift-scheduler-ai/
 ├── frontend/       # React 19 + Vite SPA (deployed to Vercel)
-├── backend/        # Node.js + Express API (deployed to Vercel)
+├── backend/        # Node.js + Express API (deployed to Railway)
 ├── scripts/        # DB setup, migration, debug, and backup scripts
 ├── docs/           # Architecture docs, design docs, guides
 └── fixtures/       # Demo/test data (CSV)
@@ -157,14 +157,41 @@ Merge flow: feature branch → `staging` (review + integration test) → `main` 
 
 ---
 
+## Staging Verification Flow
+
+**Zero-production-impact principle**: every change must be verified on the staging environment before it reaches production. The full runbook is the source of truth:
+
+→ [`docs/operations/staging-verification-flow.md`](docs/operations/staging-verification-flow.md)
+
+Key points:
+
+- Branch → environment: `feature/* · fix/*` → Vercel Preview (on PR) / `staging` → Railway staging (backend + DB) + Vercel staging (frontend) / `main` → production (production DB).
+- Pushing to `staging` deploys automatically; promotion `staging` → `main` is a **manual PR** gated on the verification checklist.
+- Verification checklist (run on staging, required before merging to `main`):
+  1. `GET {staging}/api/health` → 200, `database.connected: true`, `database.host` contains `switchyard` — **abort immediately if `mainline` (production DB) appears**.
+  2. Main screens render (top / shift calendar / dashboard).
+  3. One successful shift generation (small tenant, one month).
+  4. Visual check of the changed functionality.
+- PRs targeting `main` must fill in the "staging 検証結果" section of `.github/pull_request_template.md` with URLs, JST timestamps, and results. Docs-only changes may state a reason for skipping instead.
+
+---
+
 ## Deployment
 
 | Target | Platform | Notes |
 |---|---|---|
 | Frontend SPA | Vercel | Config: `frontend/vercel.json` |
-| Backend API | Vercel | Config: `backend/vercel.json` |
+| Backend API | Railway | `backend/vercel.json` is legacy — the API no longer deploys to Vercel (verified via `/api/health`) |
 | Database | Railway (PostgreSQL 15+) | Connection via `DATABASE_URL` env var |
 | DB Backup | SharePoint | Via `scripts/backup/` + GitHub Actions workflow |
+
+### Deployment Environments
+
+| Component | Staging | Production |
+|---|---|---|
+| Frontend (React SPA) | Vercel Preview / staging alias | Vercel Production |
+| Backend API (Express) | Railway staging (`shift-scheduler-ai` staging env) | Railway production (`shift-scheduler-ai-production.up.railway.app`) |
+| Database (PostgreSQL) | Railway staging (`humble-manifestation` / `switchyard:26491`) | Railway production (`lucky-appreciation` / `mainline:50142`) |
 
 ---
 
