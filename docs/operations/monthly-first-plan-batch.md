@@ -80,7 +80,7 @@ POST /api/shifts/plans/monthly-first-plan-batch
 
 設定手順: Railway ダッシュボード → shift-scheduler-ai サービス → **Variables** → **Add Variable**
 
-### GitHub Secrets（info-mnml/shift-scheduler-ai リポジトリ）
+### GitHub Secrets（MNML-LLC/shift-scheduler-ai リポジトリ）
 
 | Secret | 説明 |
 |---|---|
@@ -100,6 +100,9 @@ POST /api/shifts/plans/monthly-first-plan-batch
 
 ```yaml
 name: Monthly First Plan Batch
+
+permissions:
+  contents: none
 
 on:
   schedule:
@@ -196,7 +199,7 @@ jobs:
 
 ```bash
 gh workflow run monthly-first-plan-batch.yml \
-  -R info-mnml/shift-scheduler-ai \
+  -R MNML-LLC/shift-scheduler-ai \
   -f target_year=2026 \
   -f target_month=8
 ```
@@ -230,5 +233,5 @@ gh workflow run monthly-first-plan-batch.yml \
 
 ```
 :warning: 月次第一案バッチ失敗 2026-8
-GitHub Actions Job URL: https://github.com/info-mnml/shift-scheduler-ai/actions/runs/XXX
+GitHub Actions Job URL: https://github.com/MNML-LLC/shift-scheduler-ai/actions/runs/XXX
 ```
