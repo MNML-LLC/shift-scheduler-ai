@@ -80,7 +80,7 @@
     "framer-motion": "^12.15.0",
     "html2pdf.js": "^0.12.1",
     "input-otp": "^1.4.2",
-    "jspdf": "^3.0.4",
+    "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.510.0",
     "modern-screenshot": "^4.6.7",
