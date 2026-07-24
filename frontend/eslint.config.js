@@ -38,6 +38,15 @@ export default [
       ],
       'react/prop-types': 'off',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // eslint v10 の recommended と react-hooks v7 で新規追加されたルール。
+      // 既存コードの品質基準を維持するため一旦 off（有効化は別 Issue で対応）
+      'preserve-caught-error': 'off',
+      'no-useless-assignment': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/purity': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/static-components': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
     },
   },
 ]
