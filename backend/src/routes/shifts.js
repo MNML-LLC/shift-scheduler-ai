@@ -7,6 +7,7 @@ import { VALIDATION_MESSAGES } from '../config/validation.js';
 import ShiftGenerationService from '../services/shift/ShiftGenerationService.js';
 import ConstraintValidationService from '../services/shift/ConstraintValidationService.js';
 import { calculateWorkHours, formatDateToYYYYMMDD } from '../utils/timeUtils.js';
+import { notifyShiftGenerationError } from '../utils/slackNotifier.js';
 
 const router = express.Router();
 
@@ -966,6 +967,8 @@ router.post('/plans/generate', async (req, res) => {
       });
     }
 
+    await notifyShiftGenerationError('POST /api/shifts/plans/generate', error, req.body);
+
     res.status(500).json({
       success: false,
       error: error.message
@@ -1158,6 +1161,8 @@ router.post('/plans/generate-ai', async (req, res) => {
 
   } catch (error) {
     console.error('[API] AI自動生成エラー:', error);
+
+    await notifyShiftGenerationError('POST /api/shifts/plans/generate-ai', error, req.body);
 
     // ShiftGenerationServiceからのエラー
     if (error.success === false) {
