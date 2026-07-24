@@ -1,0 +1,98 @@
+# 本番バックエンド死活監視ワークフロー（Issue #155）
+#
+# ⚠️ このファイルは配置用テンプレートです。
+# claude-code-action は GitHub App の権限制約により .github/workflows/ を
+# 直接変更できないため、オペレーターが以下のコマンドで配置してください:
+#
+#   git mv docs/operations/health-check.yml .github/workflows/health-check.yml
+#
+# 必要な Repository Secrets（Settings → Secrets and variables → Actions）:
+#   - BACKEND_URL        本番バックエンドのベース URL（例: https://shift-scheduler-ai-production.up.railway.app）
+#   - SLACK_WEBHOOK_URL  Slack Incoming Webhook の URL
+#
+# 詳細な手順: docs/operations/health-check-setup.md
+
+name: Health Check
+
+on:
+  schedule:
+    # 毎時 0 分（UTC）に本番バックエンドを死活監視
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health-check:
+    name: Production Backend Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check /api/health
+        id: check
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          if [ -z "$BACKEND_URL" ]; then
+            echo "::error::BACKEND_URL secret is not set"
+            exit 1
+          fi
+
+          MAX_ATTEMPTS=3
+          RETRY_WAIT_SECONDS=30
+          HTTP_STATUS="000"
+          FAIL_REASON="unknown"
+
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "Attempt $i/$MAX_ATTEMPTS"
+            HTTP_STATUS=$(curl -s -o /tmp/health.json -w '%{http_code}' --max-time 15 "${BACKEND_URL%/}/api/health" || echo "000")
+
+            if [ "$HTTP_STATUS" = "200" ]; then
+              CONNECTED=$(jq -r '.database.connected' /tmp/health.json 2>/dev/null || echo "parse_error")
+              if [ "$CONNECTED" = "true" ]; then
+                echo "Healthy: HTTP 200, database.connected=true"
+                exit 0
+              fi
+              FAIL_REASON="HTTP 200 but database.connected=$CONNECTED"
+            elif [ "$HTTP_STATUS" = "000" ]; then
+              FAIL_REASON="connection failed (timeout or DNS/network error)"
+            else
+              FAIL_REASON="HTTP status $HTTP_STATUS"
+            fi
+
+            echo "Unhealthy: $FAIL_REASON"
+            if [ "$i" -lt "$MAX_ATTEMPTS" ]; then
+              sleep "$RETRY_WAIT_SECONDS"
+            fi
+          done
+
+          {
+            echo "http_status=$HTTP_STATUS"
+            echo "fail_reason=$FAIL_REASON"
+          } >> "$GITHUB_OUTPUT"
+          echo "::error::Health check failed after $MAX_ATTEMPTS attempts ($FAIL_REASON)"
+          exit 1
+
+      - name: Notify Slack
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          HTTP_STATUS: ${{ steps.check.outputs.http_status }}
+          FAIL_REASON: ${{ steps.check.outputs.fail_reason }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "::warning::SLACK_WEBHOOK_URL secret is not set — skipping notification"
+            exit 0
+          fi
+
+          TEXT=":rotating_light: *shift-scheduler-ai 本番バックエンド死活監視アラート*
+          本番 /api/health の応答異常を検知しました。
+          - 異常内容: ${FAIL_REASON:-unknown}
+          - 最終 HTTP ステータス: ${HTTP_STATUS:-unknown}
+          - 検知時刻: $(date -u '+%Y-%m-%d %H:%M UTC')
+          - 実行ログ: ${RUN_URL}"
+
+          PAYLOAD=$(jq -n --arg text "$TEXT" '{text: $text}')
+          curl -s -X POST -H 'Content-Type: application/json' -d "$PAYLOAD" "$SLACK_WEBHOOK_URL"
