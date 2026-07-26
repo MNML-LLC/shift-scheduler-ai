@@ -1,5 +1,5 @@
 import express from 'express'
-import { query } from '../config/database.js'
+import { query, DatabaseUnavailableError } from '../config/database.js'
 import { openai } from '../services/openaiService.js'
 import fs from 'fs'
 import path from 'path'
@@ -10,7 +10,7 @@ const router = express.Router()
 /**
  * DBから最新データを取得してVector Storeにアップロード
  */
-router.post('/setup', async (req, res) => {
+router.post('/setup', async (req, res, next) => {
   try {
     const { tenantId, storeId } = req.body
 
@@ -128,6 +128,7 @@ router.post('/setup', async (req, res) => {
       })
     }
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error)
     console.error('Vector Storeセットアップエラー:', error)
     res.status(500).json({ error: error.message })
   }

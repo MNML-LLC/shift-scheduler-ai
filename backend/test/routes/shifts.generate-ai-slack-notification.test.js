@@ -4,10 +4,14 @@ import request from 'supertest'
 
 const { generateShiftsMock } = vi.hoisted(() => ({ generateShiftsMock: vi.fn() }))
 
-vi.mock('../../src/config/database.js', () => ({
-  query: vi.fn(),
-  transaction: vi.fn(),
-}))
+vi.mock('../../src/config/database.js', async () => {
+  const actual = await vi.importActual('../../src/config/database.js')
+  return {
+    query: vi.fn(),
+    transaction: vi.fn(),
+    DatabaseUnavailableError: actual.DatabaseUnavailableError,
+  }
+})
 vi.mock('axios', () => ({
   default: {
     post: vi.fn(),

@@ -1,12 +1,12 @@
 import express from 'express';
-import { query } from '../config/database.js';
+import { query, DatabaseUnavailableError } from '../config/database.js';
 
 const router = express.Router();
 
 /**
  * テナントマスタ取得
  */
-router.get('/tenants', async (req, res) => {
+router.get('/tenants', async (req, res, next) => {
   try {
     const result = await query(`
       SELECT
@@ -31,6 +31,7 @@ router.get('/tenants', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching tenants:', error);
     res.status(500).json({
       success: false,
@@ -42,7 +43,7 @@ router.get('/tenants', async (req, res) => {
 /**
  * 部門マスタ取得
  */
-router.get('/divisions', async (req, res) => {
+router.get('/divisions', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -66,6 +67,7 @@ router.get('/divisions', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching divisions:', error);
     res.status(500).json({
       success: false,
@@ -77,7 +79,7 @@ router.get('/divisions', async (req, res) => {
 /**
  * 店舗マスタ取得
  */
-router.get('/stores', async (req, res) => {
+router.get('/stores', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -101,6 +103,7 @@ router.get('/stores', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching stores:', error);
     res.status(500).json({
       success: false,
@@ -112,7 +115,7 @@ router.get('/stores', async (req, res) => {
 /**
  * スタッフマスタ取得
  */
-router.get('/staff', async (req, res) => {
+router.get('/staff', async (req, res, next) => {
   try {
     const { tenant_id = 1, store_id } = req.query;
 
@@ -157,6 +160,7 @@ router.get('/staff', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching staff:', error);
     res.status(500).json({
       success: false,
@@ -168,7 +172,7 @@ router.get('/staff', async (req, res) => {
 /**
  * スタッフ作成
  */
-router.post('/staff', async (req, res) => {
+router.post('/staff', async (req, res, next) => {
   try {
     const {
       tenant_id,
@@ -203,6 +207,7 @@ router.post('/staff', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating staff:', error);
     res.status(500).json({
       success: false,
@@ -214,7 +219,7 @@ router.post('/staff', async (req, res) => {
 /**
  * スタッフ更新
  */
-router.put('/staff/:staff_id', async (req, res) => {
+router.put('/staff/:staff_id', async (req, res, next) => {
   try {
     const { staff_id } = req.params;
     const {
@@ -260,6 +265,7 @@ router.put('/staff/:staff_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating staff:', error);
     res.status(500).json({
       success: false,
@@ -271,7 +277,7 @@ router.put('/staff/:staff_id', async (req, res) => {
 /**
  * スタッフ削除（論理削除）
  */
-router.delete('/staff/:staff_id', async (req, res) => {
+router.delete('/staff/:staff_id', async (req, res, next) => {
   try {
     const { staff_id } = req.params;
 
@@ -295,6 +301,7 @@ router.delete('/staff/:staff_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting staff:', error);
     res.status(500).json({
       success: false,
@@ -306,7 +313,7 @@ router.delete('/staff/:staff_id', async (req, res) => {
 /**
  * 役職マスタ取得
  */
-router.get('/roles', async (req, res) => {
+router.get('/roles', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -326,6 +333,7 @@ router.get('/roles', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching roles:', error);
     res.status(500).json({
       success: false,
@@ -337,7 +345,7 @@ router.get('/roles', async (req, res) => {
 /**
  * スキルマスタ取得
  */
-router.get('/skills', async (req, res) => {
+router.get('/skills', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -358,6 +366,7 @@ router.get('/skills', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching skills:', error);
     res.status(500).json({
       success: false,
@@ -369,7 +378,7 @@ router.get('/skills', async (req, res) => {
 /**
  * シフトパターンマスタ取得
  */
-router.get('/shift-patterns', async (req, res) => {
+router.get('/shift-patterns', async (req, res, next) => {
   try {
     const { tenant_id = 1, store_id } = req.query;
 
@@ -418,6 +427,7 @@ router.get('/shift-patterns', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching shift patterns:', error);
     res.status(500).json({
       success: false,
@@ -429,7 +439,7 @@ router.get('/shift-patterns', async (req, res) => {
 /**
  * 税額区分マスタ取得
  */
-router.get('/tax-brackets', async (req, res) => {
+router.get('/tax-brackets', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -457,6 +467,7 @@ router.get('/tax-brackets', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching tax brackets:', error);
     res.status(500).json({
       success: false,
@@ -468,7 +479,7 @@ router.get('/tax-brackets', async (req, res) => {
 /**
  * スタッフスキルマスタ取得
  */
-router.get('/staff-skills', async (req, res) => {
+router.get('/staff-skills', async (req, res, next) => {
   try {
     const { tenant_id = 1, staff_id } = req.query;
 
@@ -499,6 +510,7 @@ router.get('/staff-skills', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching staff skills:', error);
     res.status(500).json({
       success: false,
@@ -510,7 +522,7 @@ router.get('/staff-skills', async (req, res) => {
 /**
  * スタッフ資格マスタ取得
  */
-router.get('/staff-certifications', async (req, res) => {
+router.get('/staff-certifications', async (req, res, next) => {
   try {
     const { tenant_id = 1, staff_id } = req.query;
 
@@ -558,6 +570,7 @@ router.get('/staff-certifications', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching staff certifications:', error);
     res.status(500).json({
       success: false,
@@ -569,7 +582,7 @@ router.get('/staff-certifications', async (req, res) => {
 /**
  * 保険料率マスタ取得
  */
-router.get('/insurance-rates', async (req, res) => {
+router.get('/insurance-rates', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -592,6 +605,7 @@ router.get('/insurance-rates', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching insurance rates:', error);
     res.status(500).json({
       success: false,
@@ -603,7 +617,7 @@ router.get('/insurance-rates', async (req, res) => {
 /**
  * 通勤手当マスタ取得
  */
-router.get('/commute-allowance', async (req, res) => {
+router.get('/commute-allowance', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -628,6 +642,7 @@ router.get('/commute-allowance', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching commute allowance:', error);
     res.status(500).json({
       success: false,
@@ -639,7 +654,7 @@ router.get('/commute-allowance', async (req, res) => {
 /**
  * 労働法制約マスタ取得
  */
-router.get('/labor-law-constraints', async (req, res) => {
+router.get('/labor-law-constraints', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -669,6 +684,7 @@ router.get('/labor-law-constraints', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching labor law constraints:', error);
     res.status(500).json({
       success: false,
@@ -680,7 +696,7 @@ router.get('/labor-law-constraints', async (req, res) => {
 /**
  * 店舗制約マスタ取得
  */
-router.get('/store-constraints', async (req, res) => {
+router.get('/store-constraints', async (req, res, next) => {
   try {
     const { tenant_id = 1, store_id } = req.query;
 
@@ -714,6 +730,7 @@ router.get('/store-constraints', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching store constraints:', error);
     res.status(500).json({
       success: false,
@@ -725,7 +742,7 @@ router.get('/store-constraints', async (req, res) => {
 /**
  * 雇用形態マスタ取得
  */
-router.get('/employment-types', async (req, res) => {
+router.get('/employment-types', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -747,6 +764,7 @@ router.get('/employment-types', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching employment types:', error);
     res.status(500).json({
       success: false,
@@ -758,7 +776,7 @@ router.get('/employment-types', async (req, res) => {
 /**
  * 労務管理ルールマスタ取得
  */
-router.get('/labor-management-rules', async (req, res) => {
+router.get('/labor-management-rules', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -786,6 +804,7 @@ router.get('/labor-management-rules', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching labor management rules:', error);
     res.status(500).json({
       success: false,
@@ -797,7 +816,7 @@ router.get('/labor-management-rules', async (req, res) => {
 /**
  * シフト検証ルールマスタ取得
  */
-router.get('/shift-validation-rules', async (req, res) => {
+router.get('/shift-validation-rules', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -828,6 +847,7 @@ router.get('/shift-validation-rules', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching shift validation rules:', error);
     res.status(500).json({
       success: false,
@@ -839,7 +859,7 @@ router.get('/shift-validation-rules', async (req, res) => {
 /**
  * 全マスターデータを一括取得
  */
-router.get('/all', async (req, res) => {
+router.get('/all', async (req, res, next) => {
   try {
     const { tenant_id = 1 } = req.query;
 
@@ -877,6 +897,7 @@ router.get('/all', async (req, res) => {
       }
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching all master data:', error);
     res.status(500).json({
       success: false,
@@ -892,7 +913,7 @@ router.get('/all', async (req, res) => {
  */
 
 // 役職作成
-router.post('/roles', async (req, res) => {
+router.post('/roles', async (req, res, next) => {
   try {
     const { tenant_id, role_code, role_name, description } = req.body;
 
@@ -915,6 +936,7 @@ router.post('/roles', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating role:', error);
     res.status(500).json({
       success: false,
@@ -924,7 +946,7 @@ router.post('/roles', async (req, res) => {
 });
 
 // 役職更新
-router.put('/roles/:role_id', async (req, res) => {
+router.put('/roles/:role_id', async (req, res, next) => {
   try {
     const { role_id } = req.params;
     const { role_code, role_name, description } = req.body;
@@ -956,6 +978,7 @@ router.put('/roles/:role_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating role:', error);
     res.status(500).json({
       success: false,
@@ -965,7 +988,7 @@ router.put('/roles/:role_id', async (req, res) => {
 });
 
 // 役職削除（論理削除）
-router.delete('/roles/:role_id', async (req, res) => {
+router.delete('/roles/:role_id', async (req, res, next) => {
   try {
     const { role_id } = req.params;
 
@@ -988,6 +1011,7 @@ router.delete('/roles/:role_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting role:', error);
     res.status(500).json({
       success: false,
@@ -1001,7 +1025,7 @@ router.delete('/roles/:role_id', async (req, res) => {
 // ===================
 
 // 店舗作成
-router.post('/stores', async (req, res) => {
+router.post('/stores', async (req, res, next) => {
   try {
     const { tenant_id, store_code, store_name, division_id, address, phone_number, business_hours_start, business_hours_end } = req.body;
 
@@ -1024,6 +1048,7 @@ router.post('/stores', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating store:', error);
     res.status(500).json({
       success: false,
@@ -1033,7 +1058,7 @@ router.post('/stores', async (req, res) => {
 });
 
 // 店舗更新
-router.put('/stores/:store_id', async (req, res) => {
+router.put('/stores/:store_id', async (req, res, next) => {
   try {
     const { store_id } = req.params;
     const { store_code, store_name, business_hours_start, business_hours_end } = req.body;
@@ -1062,6 +1087,7 @@ router.put('/stores/:store_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating store:', error);
     res.status(500).json({
       success: false,
@@ -1071,7 +1097,7 @@ router.put('/stores/:store_id', async (req, res) => {
 });
 
 // 店舗削除（論理削除）
-router.delete('/stores/:store_id', async (req, res) => {
+router.delete('/stores/:store_id', async (req, res, next) => {
   try {
     const { store_id } = req.params;
 
@@ -1094,6 +1120,7 @@ router.delete('/stores/:store_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting store:', error);
     res.status(500).json({
       success: false,
@@ -1107,7 +1134,7 @@ router.delete('/stores/:store_id', async (req, res) => {
 // ===================
 
 // スキル作成
-router.post('/skills', async (req, res) => {
+router.post('/skills', async (req, res, next) => {
   try {
     const { tenant_id, skill_code, skill_name, description } = req.body;
 
@@ -1129,6 +1156,7 @@ router.post('/skills', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating skill:', error);
     res.status(500).json({
       success: false,
@@ -1138,7 +1166,7 @@ router.post('/skills', async (req, res) => {
 });
 
 // スキル更新
-router.put('/skills/:skill_id', async (req, res) => {
+router.put('/skills/:skill_id', async (req, res, next) => {
   try {
     const { skill_id } = req.params;
     const { skill_code, skill_name, description } = req.body;
@@ -1169,6 +1197,7 @@ router.put('/skills/:skill_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating skill:', error);
     res.status(500).json({
       success: false,
@@ -1178,7 +1207,7 @@ router.put('/skills/:skill_id', async (req, res) => {
 });
 
 // スキル削除（論理削除）
-router.delete('/skills/:skill_id', async (req, res) => {
+router.delete('/skills/:skill_id', async (req, res, next) => {
   try {
     const { skill_id } = req.params;
 
@@ -1201,6 +1230,7 @@ router.delete('/skills/:skill_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting skill:', error);
     res.status(500).json({
       success: false,
@@ -1214,7 +1244,7 @@ router.delete('/skills/:skill_id', async (req, res) => {
 // ===================
 
 // 雇用形態作成
-router.post('/employment-types', async (req, res) => {
+router.post('/employment-types', async (req, res, next) => {
   try {
     const { tenant_id, employment_type_code, employment_type_name, description } = req.body;
 
@@ -1236,6 +1266,7 @@ router.post('/employment-types', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating employment type:', error);
     res.status(500).json({
       success: false,
@@ -1245,7 +1276,7 @@ router.post('/employment-types', async (req, res) => {
 });
 
 // 雇用形態更新
-router.put('/employment-types/:employment_type_id', async (req, res) => {
+router.put('/employment-types/:employment_type_id', async (req, res, next) => {
   try {
     const { employment_type_id } = req.params;
     const { employment_type_code, employment_type_name, description } = req.body;
@@ -1276,6 +1307,7 @@ router.put('/employment-types/:employment_type_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating employment type:', error);
     res.status(500).json({
       success: false,
@@ -1285,7 +1317,7 @@ router.put('/employment-types/:employment_type_id', async (req, res) => {
 });
 
 // 雇用形態削除（論理削除）
-router.delete('/employment-types/:employment_type_id', async (req, res) => {
+router.delete('/employment-types/:employment_type_id', async (req, res, next) => {
   try {
     const { employment_type_id } = req.params;
 
@@ -1308,6 +1340,7 @@ router.delete('/employment-types/:employment_type_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting employment type:', error);
     res.status(500).json({
       success: false,
@@ -1321,7 +1354,7 @@ router.delete('/employment-types/:employment_type_id', async (req, res) => {
 // ===================
 
 // シフトパターン作成
-router.post('/shift-patterns', async (req, res) => {
+router.post('/shift-patterns', async (req, res, next) => {
   try {
     const { tenant_id, store_id, pattern_code, pattern_name, start_time, end_time, break_minutes } = req.body;
 
@@ -1343,6 +1376,7 @@ router.post('/shift-patterns', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating shift pattern:', error);
     res.status(500).json({
       success: false,
@@ -1352,7 +1386,7 @@ router.post('/shift-patterns', async (req, res) => {
 });
 
 // シフトパターン更新
-router.put('/shift-patterns/:pattern_id', async (req, res) => {
+router.put('/shift-patterns/:pattern_id', async (req, res, next) => {
   try {
     const { pattern_id } = req.params;
     const { pattern_code, pattern_name, start_time, end_time, break_minutes, store_id } = req.body;
@@ -1383,6 +1417,7 @@ router.put('/shift-patterns/:pattern_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating shift pattern:', error);
     res.status(500).json({
       success: false,
@@ -1392,7 +1427,7 @@ router.put('/shift-patterns/:pattern_id', async (req, res) => {
 });
 
 // シフトパターン削除（論理削除）
-router.delete('/shift-patterns/:pattern_id', async (req, res) => {
+router.delete('/shift-patterns/:pattern_id', async (req, res, next) => {
   try {
     const { pattern_id } = req.params;
 
@@ -1415,6 +1450,7 @@ router.delete('/shift-patterns/:pattern_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting shift pattern:', error);
     res.status(500).json({
       success: false,
@@ -1428,7 +1464,7 @@ router.delete('/shift-patterns/:pattern_id', async (req, res) => {
 // ======================
 
 // Create division
-router.post('/divisions', async (req, res) => {
+router.post('/divisions', async (req, res, next) => {
   try {
     const {
       tenant_id,
@@ -1476,6 +1512,7 @@ router.post('/divisions', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating division:', error);
     res.status(500).json({
       success: false,
@@ -1485,7 +1522,7 @@ router.post('/divisions', async (req, res) => {
 });
 
 // Update division
-router.put('/divisions/:division_id', async (req, res) => {
+router.put('/divisions/:division_id', async (req, res, next) => {
   try {
     const { division_id } = req.params;
     const {
@@ -1532,6 +1569,7 @@ router.put('/divisions/:division_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating division:', error);
     res.status(500).json({
       success: false,
@@ -1541,7 +1579,7 @@ router.put('/divisions/:division_id', async (req, res) => {
 });
 
 // Delete division (logical delete)
-router.delete('/divisions/:division_id', async (req, res) => {
+router.delete('/divisions/:division_id', async (req, res, next) => {
   try {
     const { division_id } = req.params;
 
@@ -1564,6 +1602,7 @@ router.delete('/divisions/:division_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting division:', error);
     res.status(500).json({
       success: false,
@@ -1577,7 +1616,7 @@ router.delete('/divisions/:division_id', async (req, res) => {
 // ===========================
 
 // Create commute allowance
-router.post('/commute-allowance', async (req, res) => {
+router.post('/commute-allowance', async (req, res, next) => {
   try {
     const {
       tenant_id,
@@ -1625,6 +1664,7 @@ router.post('/commute-allowance', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating commute allowance:', error);
     res.status(500).json({
       success: false,
@@ -1634,7 +1674,7 @@ router.post('/commute-allowance', async (req, res) => {
 });
 
 // Update commute allowance
-router.put('/commute-allowance/:allowance_id', async (req, res) => {
+router.put('/commute-allowance/:allowance_id', async (req, res, next) => {
   try {
     const { allowance_id } = req.params;
     const {
@@ -1681,6 +1721,7 @@ router.put('/commute-allowance/:allowance_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating commute allowance:', error);
     res.status(500).json({
       success: false,
@@ -1690,7 +1731,7 @@ router.put('/commute-allowance/:allowance_id', async (req, res) => {
 });
 
 // Delete commute allowance (logical delete)
-router.delete('/commute-allowance/:allowance_id', async (req, res) => {
+router.delete('/commute-allowance/:allowance_id', async (req, res, next) => {
   try {
     const { allowance_id } = req.params;
 
@@ -1713,6 +1754,7 @@ router.delete('/commute-allowance/:allowance_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting commute allowance:', error);
     res.status(500).json({
       success: false,
@@ -1726,7 +1768,7 @@ router.delete('/commute-allowance/:allowance_id', async (req, res) => {
 // =========================
 
 // Create insurance rate
-router.post('/insurance-rates', async (req, res) => {
+router.post('/insurance-rates', async (req, res, next) => {
   try {
     const {
       tenant_id,
@@ -1774,6 +1816,7 @@ router.post('/insurance-rates', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating insurance rate:', error);
     res.status(500).json({
       success: false,
@@ -1783,7 +1826,7 @@ router.post('/insurance-rates', async (req, res) => {
 });
 
 // Update insurance rate
-router.put('/insurance-rates/:rate_id', async (req, res) => {
+router.put('/insurance-rates/:rate_id', async (req, res, next) => {
   try {
     const { rate_id } = req.params;
     const {
@@ -1830,6 +1873,7 @@ router.put('/insurance-rates/:rate_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating insurance rate:', error);
     res.status(500).json({
       success: false,
@@ -1839,7 +1883,7 @@ router.put('/insurance-rates/:rate_id', async (req, res) => {
 });
 
 // Delete insurance rate (logical delete)
-router.delete('/insurance-rates/:rate_id', async (req, res) => {
+router.delete('/insurance-rates/:rate_id', async (req, res, next) => {
   try {
     const { rate_id } = req.params;
 
@@ -1862,6 +1906,7 @@ router.delete('/insurance-rates/:rate_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting insurance rate:', error);
     res.status(500).json({
       success: false,
@@ -1875,7 +1920,7 @@ router.delete('/insurance-rates/:rate_id', async (req, res) => {
 // =======================
 
 // Create tax bracket
-router.post('/tax-brackets', async (req, res) => {
+router.post('/tax-brackets', async (req, res, next) => {
   try {
     const {
       tenant_id,
@@ -1929,6 +1974,7 @@ router.post('/tax-brackets', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating tax bracket:', error);
     res.status(500).json({
       success: false,
@@ -1938,7 +1984,7 @@ router.post('/tax-brackets', async (req, res) => {
 });
 
 // Update tax bracket
-router.put('/tax-brackets/:bracket_id', async (req, res) => {
+router.put('/tax-brackets/:bracket_id', async (req, res, next) => {
   try {
     const { bracket_id } = req.params;
     const {
@@ -1991,6 +2037,7 @@ router.put('/tax-brackets/:bracket_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating tax bracket:', error);
     res.status(500).json({
       success: false,
@@ -2000,7 +2047,7 @@ router.put('/tax-brackets/:bracket_id', async (req, res) => {
 });
 
 // Delete tax bracket (logical delete)
-router.delete('/tax-brackets/:bracket_id', async (req, res) => {
+router.delete('/tax-brackets/:bracket_id', async (req, res, next) => {
   try {
     const { bracket_id } = req.params;
 
@@ -2023,6 +2070,7 @@ router.delete('/tax-brackets/:bracket_id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting tax bracket:', error);
     res.status(500).json({
       success: false,

@@ -1,7 +1,7 @@
 import express from 'express';
 import axios from 'axios';
 import crypto from 'crypto';
-import { query, transaction } from '../config/database.js';
+import { query, transaction, DatabaseUnavailableError } from '../config/database.js';
 import { GENERATION_TYPE } from '../config/constants.js';
 import { VALIDATION_MESSAGES } from '../config/validation.js';
 import ShiftGenerationService from '../services/shift/ShiftGenerationService.js';
@@ -216,7 +216,7 @@ async function validateShiftTimeOverlap(newShift) {
  * - month: 対象月 (required)
  * - store_id: 店舗ID (optional)
  */
-router.get('/monthly-comments', async (req, res) => {
+router.get('/monthly-comments', async (req, res, next) => {
   try {
     const { tenant_id, year, month, store_id } = req.query;
 
@@ -262,6 +262,7 @@ router.get('/monthly-comments', async (req, res) => {
       count: result.rows.length,
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching monthly comments:', error);
     res.status(500).json({
       success: false,
@@ -282,7 +283,7 @@ router.get('/monthly-comments', async (req, res) => {
  *
  * staff_monthly_submissionsテーブルのレコード有無で提出済み/未提出を判定
  */
-router.get('/submissions', async (req, res) => {
+router.get('/submissions', async (req, res, next) => {
   try {
     const { tenant_id, year, month, store_id } = req.query;
 
@@ -327,6 +328,7 @@ router.get('/submissions', async (req, res) => {
       count: result.rows.length,
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching submissions:', error);
     res.status(500).json({
       success: false,
@@ -346,7 +348,7 @@ router.get('/submissions', async (req, res) => {
  * - month: 月 (optional)
  * - status: ステータス (optional) DRAFT/APPROVED
  */
-router.get('/plans', async (req, res) => {
+router.get('/plans', async (req, res, next) => {
   try {
     const { tenant_id = 1, store_id, year, month, status } = req.query;
 
@@ -418,6 +420,7 @@ router.get('/plans', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching shift plans:', error);
     res.status(500).json({
       success: false,
@@ -436,7 +439,7 @@ router.get('/plans', async (req, res) => {
  * - year: 年 (required)
  * - month: 月 (optional)
  */
-router.get('/summary', async (req, res) => {
+router.get('/summary', async (req, res, next) => {
   try {
     const { tenant_id = 1, store_id, year, month, plan_type } = req.query;
 
@@ -508,6 +511,7 @@ router.get('/summary', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching shift summary:', error);
     res.status(500).json({
       success: false,
@@ -531,7 +535,7 @@ router.get('/summary', async (req, res) => {
  * - date_to: 終了日 (optional) YYYY-MM-DD
  * - is_modified: 変更フラグ (optional) true/false
  */
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const {
       tenant_id = 1,
@@ -653,6 +657,7 @@ router.get('/', async (req, res) => {
       count: result.rows.length
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching shifts:', error);
     res.status(500).json({
       success: false,
@@ -674,7 +679,7 @@ router.get('/', async (req, res) => {
  *   created_by?: number  // 作成者のstaff_id (optional)
  * }
  */
-router.post('/plans/generate', async (req, res) => {
+router.post('/plans/generate', async (req, res, next) => {
   try {
     const { tenant_id, store_id, year, month, created_by } = req.body;
 
@@ -957,6 +962,7 @@ router.post('/plans/generate', async (req, res) => {
       target_month: { year, month }
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     // エラー時はロールバック
     await query('ROLLBACK');
     console.error('Error generating shift plan:', error);
@@ -1006,7 +1012,7 @@ router.post('/plans/generate', async (req, res) => {
  *   }
  * }
  */
-router.post('/plans/generate-ai', async (req, res) => {
+router.post('/plans/generate-ai', async (req, res, next) => {
   try {
     const { tenant_id, store_id, year, month, created_by, options = {} } = req.body;
 
@@ -1172,6 +1178,7 @@ router.post('/plans/generate-ai', async (req, res) => {
     }
 
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('[API] AI自動生成エラー:', error);
 
     await notifyShiftGenerationError('POST /api/shifts/plans/generate-ai', error, req.body);
@@ -1202,7 +1209,7 @@ router.post('/plans/generate-ai', async (req, res) => {
  * - plan_id: 承認するplan_id (required)
  * - tenant_id: テナントID (default: 1)
  */
-router.post('/plans/approve-first', async (req, res) => {
+router.post('/plans/approve-first', async (req, res, next) => {
   try {
     const { plan_id, tenant_id = 1 } = req.body;
 
@@ -1268,6 +1275,7 @@ router.post('/plans/approve-first', async (req, res) => {
     });
 
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error approving first plan:', error);
     res.status(500).json({
       success: false,
@@ -1298,7 +1306,7 @@ router.post('/plans/approve-first', async (req, res) => {
  *   変更しない（DRAFT に変更済みのプランがあっても上書きされない）。
  * - 新規作成された（inserted=true）店舗にのみ LINE 通知を送信する。
  */
-router.post('/plans/monthly-first-plan-batch', async (req, res) => {
+router.post('/plans/monthly-first-plan-batch', async (req, res, next) => {
   const batchApiKey = req.headers['x-batch-api-key'] || '';
   const expectedApiKey = process.env.BATCH_API_KEY || '';
 
@@ -1419,6 +1427,7 @@ router.post('/plans/monthly-first-plan-batch', async (req, res) => {
     });
 
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error running monthly first plan batch:', error);
     res.status(500).json({
       success: false,
@@ -1440,7 +1449,7 @@ router.post('/plans/monthly-first-plan-batch', async (req, res) => {
  * - shifts: シフトデータ配列 (required)
  * - created_by: 作成者ID
  */
-router.post('/plans/approve-second', async (req, res) => {
+router.post('/plans/approve-second', async (req, res, next) => {
   try {
     const {
       tenant_id = 1,
@@ -1603,6 +1612,7 @@ router.post('/plans/approve-second', async (req, res) => {
     });
 
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error approving second plan:', error);
     res.status(500).json({
       success: false,
@@ -1615,7 +1625,7 @@ router.post('/plans/approve-second', async (req, res) => {
  * 特定シフト計画の詳細取得
  * GET /api/shifts/plans/:id
  */
-router.get('/plans/:id', async (req, res) => {
+router.get('/plans/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenant_id = 1 } = req.query;
@@ -1650,6 +1660,7 @@ router.get('/plans/:id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching shift plan:', error);
     res.status(500).json({
       success: false,
@@ -1675,7 +1686,7 @@ router.get('/plans/:id', async (req, res) => {
  * - date_to: 終了日 (optional, format: YYYY-MM-DD)
  * - is_ng: NGフラグ (optional, true/false)
  */
-router.get('/preferences', async (req, res) => {
+router.get('/preferences', async (req, res, next) => {
   try {
     const { tenant_id = 1, store_id, staff_id, date_from, date_to, is_ng } = req.query;
 
@@ -1748,6 +1759,7 @@ router.get('/preferences', async (req, res) => {
       count: result.rows.length
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching shift preferences:', error);
     res.status(500).json({
       success: false,
@@ -1760,7 +1772,7 @@ router.get('/preferences', async (req, res) => {
  * シフト希望詳細取得
  * GET /api/shifts/preferences/:id
  */
-router.get('/preferences/:id', async (req, res) => {
+router.get('/preferences/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenant_id = 1 } = req.query;
@@ -1805,6 +1817,7 @@ router.get('/preferences/:id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching shift preference:', error);
     res.status(500).json({
       success: false,
@@ -1829,7 +1842,7 @@ router.get('/preferences/:id', async (req, res) => {
  *   notes?: string
  * }
  */
-router.post('/preferences', async (req, res) => {
+router.post('/preferences', async (req, res, next) => {
   try {
     const {
       tenant_id,
@@ -1921,6 +1934,7 @@ router.post('/preferences', async (req, res) => {
       data: detailResult.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating shift preference:', error);
 
     // 外部キー制約エラーの場合
@@ -1963,7 +1977,7 @@ router.post('/preferences', async (req, res) => {
  * Query Parameters:
  * - tenant_id: number (required for security)
  */
-router.put('/preferences/:id', async (req, res) => {
+router.put('/preferences/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenant_id } = req.query;
@@ -2067,6 +2081,7 @@ router.put('/preferences/:id', async (req, res) => {
       data: detailResult.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating shift preference:', error);
 
     res.status(500).json({
@@ -2097,7 +2112,7 @@ router.put('/preferences/:id', async (req, res) => {
  *   ]
  * }
  */
-router.post('/preferences/bulk', async (req, res) => {
+router.post('/preferences/bulk', async (req, res, next) => {
   try {
     const {
       tenant_id,
@@ -2223,6 +2238,7 @@ router.post('/preferences/bulk', async (req, res) => {
       inserted_ids: result.insertedIds
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error bulk creating shift preferences:', error);
 
     res.status(500).json({
@@ -2239,7 +2255,7 @@ router.post('/preferences/bulk', async (req, res) => {
  * Query Parameters:
  * - tenant_id: number (required for security)
  */
-router.delete('/preferences/:id', async (req, res) => {
+router.delete('/preferences/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenant_id } = req.query;
@@ -2282,6 +2298,7 @@ router.delete('/preferences/:id', async (req, res) => {
       }
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting shift preference:', error);
 
     res.status(500).json({
@@ -2297,7 +2314,7 @@ router.delete('/preferences/:id', async (req, res) => {
  *
  * NOTE: このルートは /preferences などの具体的なルートより後に配置する必要があります
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenant_id = 1 } = req.query;
@@ -2336,6 +2353,7 @@ router.get('/:id', async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching shift:', error);
     res.status(500).json({
       success: false,
@@ -2367,7 +2385,7 @@ router.get('/:id', async (req, res) => {
  *   notes?: string (optional)
  * }
  */
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   try {
     const {
       tenant_id,
@@ -2501,6 +2519,7 @@ router.post('/', async (req, res) => {
       data: detailResult.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating shift:', error);
 
     // 外部キー制約エラーの場合
@@ -2542,7 +2561,7 @@ router.post('/', async (req, res) => {
  * Query Parameters:
  * - tenant_id: number (required for security)
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenant_id } = req.query;
@@ -2784,6 +2803,7 @@ router.put('/:id', async (req, res) => {
       data: detailResult.rows[0]
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating shift:', error);
 
     // 外部キー制約エラーの場合
@@ -2809,7 +2829,7 @@ router.put('/:id', async (req, res) => {
  * Query Parameters:
  * - tenant_id: number (required for security)
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenant_id } = req.query;
@@ -2854,6 +2874,7 @@ router.delete('/:id', async (req, res) => {
       }
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting shift:', error);
 
     res.status(500).json({
@@ -2872,7 +2893,7 @@ router.delete('/:id', async (req, res) => {
  *
  * 注意: 過去月以外のプランは削除可能（ステータスに関わらず）
  */
-router.delete('/plans/:plan_id', async (req, res) => {
+router.delete('/plans/:plan_id', async (req, res, next) => {
   try {
     const { plan_id } = req.params;
     const { tenant_id = 1 } = req.query;
@@ -2956,6 +2977,7 @@ router.delete('/plans/:plan_id', async (req, res) => {
     }
 
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error deleting shift plan:', error);
     res.status(500).json({
       success: false,
@@ -2971,7 +2993,7 @@ router.delete('/plans/:plan_id', async (req, res) => {
  * Request Body:
  * - status: 新しいステータス (required)
  */
-router.put('/plans/:plan_id/status', async (req, res) => {
+router.put('/plans/:plan_id/status', async (req, res, next) => {
   try {
     const { plan_id } = req.params;
     const { status } = req.body;
@@ -3078,6 +3100,7 @@ router.put('/plans/:plan_id/status', async (req, res) => {
       }
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error updating plan status:', error);
     res.status(500).json({
       success: false,
@@ -3102,7 +3125,7 @@ router.put('/plans/:plan_id/status', async (req, res) => {
  * - 曜日ベース + 第N週でマッピング
  *   例: 先月の「第1月曜日」→ 今月の「第1月曜日」
  */
-router.post('/plans/copy-from-previous', async (req, res) => {
+router.post('/plans/copy-from-previous', async (req, res, next) => {
   try {
     const { tenant_id = 1, store_id, target_year, target_month, created_by } = req.body;
 
@@ -3376,6 +3399,7 @@ router.post('/plans/copy-from-previous', async (req, res) => {
     }
 
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error copying shifts from previous month:', error);
     res.status(500).json({
       success: false,
@@ -3399,7 +3423,7 @@ router.post('/plans/copy-from-previous', async (req, res) => {
  * - 各店舗ごとに最新のプランを検索（前月、前々月...と遡る）
  * - 最新プランが見つかればコピー、なければ空プラン作成
  */
-router.post('/plans/copy-from-previous-all-stores', async (req, res) => {
+router.post('/plans/copy-from-previous-all-stores', async (req, res, next) => {
   try {
     const { tenant_id = 1, target_year, target_month, created_by } = req.body;
 
@@ -3593,6 +3617,7 @@ router.post('/plans/copy-from-previous-all-stores', async (req, res) => {
     });
 
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error copying shifts for all stores:', error);
     res.status(500).json({
       success: false,
@@ -3613,7 +3638,7 @@ router.post('/plans/copy-from-previous-all-stores', async (req, res) => {
  * Returns:
  * - stores: 各店舗のシフトデータ配列
  */
-router.post('/plans/fetch-previous-data-all-stores', async (req, res) => {
+router.post('/plans/fetch-previous-data-all-stores', async (req, res, next) => {
   try {
     const { tenant_id = 1, target_year, target_month } = req.body;
 
@@ -3773,6 +3798,7 @@ router.post('/plans/fetch-previous-data-all-stores', async (req, res) => {
     });
 
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching previous data for all stores:', error);
     res.status(500).json({
       success: false,
@@ -3794,7 +3820,7 @@ router.post('/plans/fetch-previous-data-all-stores', async (req, res) => {
  *   - store_id: 店舗ID
  *   - shifts: シフトデータ配列
  */
-router.post('/plans/create-with-shifts', async (req, res) => {
+router.post('/plans/create-with-shifts', async (req, res, next) => {
   try {
     const { tenant_id = 1, target_year, target_month, created_by, stores, plan_type = 'FIRST' } = req.body;
 
@@ -3936,6 +3962,7 @@ router.post('/plans/create-with-shifts', async (req, res) => {
     });
 
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error creating plans with shifts:', error);
     res.status(500).json({
       success: false,
