@@ -1,10 +1,10 @@
 import express from 'express'
-import db from '../config/database.js'
+import db, { DatabaseUnavailableError } from '../config/database.js'
 
 const router = express.Router()
 
 // テナント一覧取得
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const result = await db.query(`
       SELECT
@@ -25,6 +25,7 @@ router.get('/', async (req, res) => {
       data: result.rows,
     })
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error)
     console.error('テナント一覧取得エラー:', error)
     res.status(500).json({
       success: false,
@@ -34,7 +35,7 @@ router.get('/', async (req, res) => {
 })
 
 // 特定のテナント情報取得
-router.get('/:tenant_id', async (req, res) => {
+router.get('/:tenant_id', async (req, res, next) => {
   try {
     const { tenant_id } = req.params
 
@@ -66,6 +67,7 @@ router.get('/:tenant_id', async (req, res) => {
       data: result.rows[0],
     })
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error)
     console.error('テナント情報取得エラー:', error)
     res.status(500).json({
       success: false,

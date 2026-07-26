@@ -15,6 +15,7 @@ import liffRoutes from './routes/liff.js'
 import healthRoutes from './routes/health.js'
 import { appendLog } from './utils/logger.js'
 import { ensureShiftPlansUniqueConstraint } from './migrations/ensureShiftPlansUniqueConstraint.js'
+import { DatabaseUnavailableError } from './config/database.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -49,6 +50,19 @@ app.use('/api/tenants', tenantsRoutes)
 app.use('/api/vector-store', vectorStoreRoutes)
 app.use('/api/holidays', holidaysRoutes)
 app.use('/api/liff', liffRoutes)
+
+// グローバルエラーハンドラ: DB リトライ枯渇時は 503 Service Unavailable を返却
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (err instanceof DatabaseUnavailableError) {
+    console.error('Database unavailable after retries:', err.cause)
+    return res.status(503).json({
+      error: 'Service temporarily unavailable. Please retry.'
+    })
+  }
+  console.error('Unhandled error:', err)
+  res.status(500).json({ error: 'Internal server error' })
+})
 
 // Server startup
 async function startServer() {

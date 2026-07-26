@@ -1,5 +1,5 @@
 import express from 'express';
-import { query } from '../config/database.js';
+import { query, DatabaseUnavailableError } from '../config/database.js';
 
 const router = express.Router();
 
@@ -7,7 +7,7 @@ const router = express.Router();
  * 給与計算データ取得
  * GET /api/analytics/payroll
  */
-router.get('/payroll', async (req, res) => {
+router.get('/payroll', async (req, res, next) => {
   try {
     const { tenant_id = 1, store_id, staff_id, year, month } = req.query;
 
@@ -78,6 +78,7 @@ router.get('/payroll', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching payroll:', error);
     res.status(500).json({
       success: false,
@@ -90,7 +91,7 @@ router.get('/payroll', async (req, res) => {
  * 売上実績データ取得
  * GET /api/analytics/sales-actual
  */
-router.get('/sales-actual', async (req, res) => {
+router.get('/sales-actual', async (req, res, next) => {
   try {
     const { tenant_id = 1, store_id, year, month } = req.query;
 
@@ -140,6 +141,7 @@ router.get('/sales-actual', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching sales actual:', error);
     res.status(500).json({
       success: false,
@@ -152,7 +154,7 @@ router.get('/sales-actual', async (req, res) => {
  * 売上予測データ取得
  * GET /api/analytics/sales-forecast
  */
-router.get('/sales-forecast', async (req, res) => {
+router.get('/sales-forecast', async (req, res, next) => {
   try {
     const { tenant_id = 1, store_id, year, month } = req.query;
 
@@ -203,6 +205,7 @@ router.get('/sales-forecast', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching sales forecast:', error);
     res.status(500).json({
       success: false,
@@ -215,7 +218,7 @@ router.get('/sales-forecast', async (req, res) => {
  * ダッシュボード指標データ取得
  * GET /api/analytics/dashboard-metrics
  */
-router.get('/dashboard-metrics', async (req, res) => {
+router.get('/dashboard-metrics', async (req, res, next) => {
   try {
     const { tenant_id = 1, metric_name, status } = req.query;
 
@@ -259,6 +262,7 @@ router.get('/dashboard-metrics', async (req, res) => {
       data: result.rows
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error fetching dashboard metrics:', error);
     res.status(500).json({
       success: false,
@@ -271,7 +275,7 @@ router.get('/dashboard-metrics', async (req, res) => {
  * 労働時間実績データ一括登録
  * POST /api/analytics/work-hours
  */
-router.post('/work-hours', async (req, res) => {
+router.post('/work-hours', async (req, res, next) => {
   try {
     const { tenant_id = 1, data } = req.body;
 
@@ -348,6 +352,7 @@ router.post('/work-hours', async (req, res) => {
       total: data.length
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error importing work hours:', error);
     res.status(500).json({
       success: false,
@@ -360,7 +365,7 @@ router.post('/work-hours', async (req, res) => {
  * 給与データ一括登録
  * POST /api/analytics/payroll
  */
-router.post('/payroll', async (req, res) => {
+router.post('/payroll', async (req, res, next) => {
   try {
     const { tenant_id = 1, data } = req.body;
 
@@ -448,6 +453,7 @@ router.post('/payroll', async (req, res) => {
       total: data.length
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error importing payroll:', error);
     res.status(500).json({
       success: false,
@@ -460,7 +466,7 @@ router.post('/payroll', async (req, res) => {
  * 売上実績データ一括登録
  * POST /api/analytics/sales-actual
  */
-router.post('/sales-actual', async (req, res) => {
+router.post('/sales-actual', async (req, res, next) => {
   try {
     const { tenant_id = 1, data } = req.body;
 
@@ -538,6 +544,7 @@ router.post('/sales-actual', async (req, res) => {
       total: data.length
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error importing sales actual:', error);
     res.status(500).json({
       success: false,
@@ -550,7 +557,7 @@ router.post('/sales-actual', async (req, res) => {
  * 売上予測データ一括登録
  * POST /api/analytics/sales-forecast
  */
-router.post('/sales-forecast', async (req, res) => {
+router.post('/sales-forecast', async (req, res, next) => {
   try {
     const { tenant_id = 1, data } = req.body;
 
@@ -631,6 +638,7 @@ router.post('/sales-forecast', async (req, res) => {
       total: data.length
     });
   } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('Error importing sales forecast:', error);
     res.status(500).json({
       success: false,
