@@ -89,7 +89,7 @@ POST /api/shifts/plans/monthly-first-plan-batch
 - 対象となる通知（すべて LIFF backend の通知エンドポイント経由）:
   - `POST /api/shifts/plans/approve-first`（第1案承認時）
   - `POST /api/shifts/plans/monthly-first-plan-batch`（月次バッチ）
-  - `PATCH /api/shifts/plans/:plan_id`（プランステータスを FIRST → APPROVED に変更した時）
+  - `PUT /plans/:plan_id/status`（プランステータスを FIRST → APPROVED に変更した時）
 - `NOTIFICATION_ENABLED=false` の場合、バッチのレスポンス上は `created` に含まれるが LINE 通知は一切送られず、`failed_notification` にも計上されない（サーバーログに `LINE notification skipped: NOTIFICATION_ENABLED is not "true"` を出力）。
 
 ### GitHub Secrets（MNML-LLC/shift-scheduler-ai リポジトリ）
