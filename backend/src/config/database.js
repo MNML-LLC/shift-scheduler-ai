@@ -2,6 +2,19 @@ import pkg from 'pg'
 const { Pool } = pkg
 import './env.js' // 環境変数を読み込む
 
+/**
+ * リトライ枯渇時に throw される専用エラー。
+ * グローバルエラーハンドラで捕捉し HTTP 503 に変換する。
+ */
+export class DatabaseUnavailableError extends Error {
+  constructor(cause) {
+    super('Database temporarily unavailable after retries')
+    this.name = 'DatabaseUnavailableError'
+    this.status = 503
+    this.cause = cause
+  }
+}
+
 // Railway PostgreSQL接続設定
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -43,11 +56,14 @@ function sleep(ms) {
 
 /**
  * クエリ実行（一時的なDB接続エラーは指数バックオフでリトライ）
+ *
+ * リトライは接続系エラー（ECONNREFUSED / ECONNRESET / ETIMEDOUT / 57P01 等）にのみ適用。
+ * 非冪等クエリ（INSERT/UPDATE/DELETE 等）はネットワーク応答喪失時に二重適用の恐れがあるため、
+ * 書き込みは transaction() 経由（リトライなし）で呼び出すこと。
  */
 export async function query(text, params) {
   const start = Date.now();
   const maxRetries = RETRY_DELAYS_MS.length;
-  let lastError;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -56,24 +72,25 @@ export async function query(text, params) {
       console.log('Executed query', { text, duration, rows: res.rowCount });
       return res;
     } catch (error) {
-      lastError = error;
-
-      if (attempt < maxRetries && isRetriableError(error)) {
-        const delay = RETRY_DELAYS_MS[attempt];
-        console.warn(
-          `Database query failed with ${error.code}, retrying ${attempt + 1}/${maxRetries} after ${delay}ms`
-        );
-        await sleep(delay);
-        continue;
+      // リトライ対象外のエラー（構文エラー等）はそのまま呼び出し側に伝搬
+      if (!isRetriableError(error)) {
+        console.error('Database query error:', error);
+        throw error;
       }
 
-      console.error('Database query error:', error);
-      throw error;
+      // リトライ対象エラーだがリトライ上限に達した場合は 503 に変換
+      if (attempt >= maxRetries) {
+        console.error('Database query error (retries exhausted):', error);
+        throw new DatabaseUnavailableError(error);
+      }
+
+      const delay = RETRY_DELAYS_MS[attempt];
+      console.warn(
+        `Database query failed with ${error.code}, retrying ${attempt + 1}/${maxRetries} after ${delay}ms`
+      );
+      await sleep(delay);
     }
   }
-
-  // ループを抜けるのは全リトライがリトライ対象エラーで失敗した場合のみ
-  throw lastError;
 }
 
 /**

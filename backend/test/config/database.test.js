@@ -22,7 +22,9 @@ vi.mock('pg', () => {
   return { default: { Pool: MockPool } }
 })
 
-const { query, RETRY_DELAYS_MS } = await import('../../src/config/database.js')
+const { query, RETRY_DELAYS_MS, DatabaseUnavailableError } = await import(
+  '../../src/config/database.js'
+)
 
 // setTimeout をリアルタイム待たずに即時解決できるよう vitest の fake timer を使う。
 beforeEach(() => {
@@ -87,7 +89,7 @@ describe('database.query — 指数バックオフリトライ', () => {
     expect(poolQuery).toHaveBeenCalledTimes(2)
   })
 
-  it('リトライ上限を超えた場合は最後のエラーを throw する', async () => {
+  it('リトライ上限を超えた場合は DatabaseUnavailableError (status=503) を throw する', async () => {
     const transientError = Object.assign(new Error('timeout'), {
       code: 'ETIMEDOUT'
     })
@@ -95,12 +97,28 @@ describe('database.query — 指数バックオフリトライ', () => {
 
     const pending = query('SELECT 1')
     // rejects の assertion を先に構築して pending にハンドラを付ける（unhandled rejection 対策）
-    const assertion = expect(pending).rejects.toMatchObject({ code: 'ETIMEDOUT' })
+    const assertion = expect(pending).rejects.toBeInstanceOf(DatabaseUnavailableError)
     await vi.runAllTimersAsync()
     await assertion
 
     // 初回 + 3 リトライ = 4 回すべて失敗
     expect(poolQuery).toHaveBeenCalledTimes(1 + RETRY_DELAYS_MS.length)
+  })
+
+  it('リトライ枯渇時の DatabaseUnavailableError は status=503 と元のエラーを保持する', async () => {
+    const transientError = Object.assign(new Error('timeout'), {
+      code: 'ETIMEDOUT'
+    })
+    poolQuery.mockRejectedValue(transientError)
+
+    const pending = query('SELECT 1')
+    const assertion = expect(pending).rejects.toMatchObject({
+      name: 'DatabaseUnavailableError',
+      status: 503,
+      cause: transientError
+    })
+    await vi.runAllTimersAsync()
+    await assertion
   })
 
   it('リトライ対象外のエラー（SQL構文エラー等）はリトライせず即 throw する', async () => {
