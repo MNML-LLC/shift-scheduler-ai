@@ -77,8 +77,20 @@ POST /api/shifts/plans/monthly-first-plan-batch
 |---|---|
 | `BATCH_API_KEY` | バッチ認証用のランダム文字列（`openssl rand -hex 32` などで生成、32文字以上推奨） |
 | `LIFF_BACKEND_URL` | LIFF backend のベース URL（既存 `approve-first` と共用） |
+| `NOTIFICATION_ENABLED` | LINE 通知（リマインド含む）を有効化するフラグ。`'true'` の場合のみ通知を送信する。未設定・空文字・その他の値はすべて `false` として扱う（安全側フォールバック）。**現在は `false` を設定して運用中**（Issue #160） |
 
 設定手順: Railway ダッシュボード → shift-scheduler-ai サービス → **Variables** → **Add Variable**
+
+#### `NOTIFICATION_ENABLED` の運用方針
+
+- **既定は無効（`false`）**。意図しないタイミングでスタッフに LINE 通知が送信されることを防ぐため。
+- 通知を有効化する場合は Railway で `NOTIFICATION_ENABLED=true` を設定する（本番・ステージング共通）。
+- Railway 上で値を変更した後は、サービスを再デプロイ（あるいは Restart）して環境変数を反映させる。
+- 対象となる通知（すべて LIFF backend の通知エンドポイント経由）:
+  - `POST /api/shifts/plans/approve-first`（第1案承認時）
+  - `POST /api/shifts/plans/monthly-first-plan-batch`（月次バッチ）
+  - `PATCH /api/shifts/plans/:plan_id`（プランステータスを FIRST → APPROVED に変更した時）
+- `NOTIFICATION_ENABLED=false` の場合、バッチのレスポンス上は `created` に含まれるが LINE 通知は一切送られず、`failed_notification` にも計上されない（サーバーログに `LINE notification skipped: NOTIFICATION_ENABLED is not "true"` を出力）。
 
 ### GitHub Secrets（MNML-LLC/shift-scheduler-ai リポジトリ）
 

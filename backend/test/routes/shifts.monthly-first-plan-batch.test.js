@@ -37,6 +37,7 @@ describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
     vi.clearAllMocks()
     process.env.BATCH_API_KEY = BATCH_API_KEY
     process.env.LIFF_BACKEND_URL = 'https://liff-backend.example.com'
+    process.env.NOTIFICATION_ENABLED = 'true'
 
     axios.post.mockResolvedValue({ data: { success: true } })
 
@@ -46,6 +47,7 @@ describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
   afterEach(() => {
     delete process.env.BATCH_API_KEY
     delete process.env.LIFF_BACKEND_URL
+    delete process.env.NOTIFICATION_ENABLED
   })
 
   it('returns 401 when x-batch-api-key header is missing', async () => {
@@ -262,6 +264,55 @@ describe('POST /api/shifts/plans/monthly-first-plan-batch', () => {
 
   it('skips notification when LIFF_BACKEND_URL is not configured', async () => {
     delete process.env.LIFF_BACKEND_URL
+    query
+      .mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
+      .mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: true }] })
+
+    const res = await request(app)
+      .post(ENDPOINT)
+      .set('x-batch-api-key', BATCH_API_KEY)
+      .send({ target_year: 2026, target_month: 8 })
+
+    expect(res.status).toBe(200)
+    expect(res.body.created).toEqual([{ tenant_id: 1, store_id: 5, plan_id: 111 }])
+    expect(axios.post).not.toHaveBeenCalled()
+  })
+
+  it('skips notification when NOTIFICATION_ENABLED is not set (Issue #160)', async () => {
+    delete process.env.NOTIFICATION_ENABLED
+    query
+      .mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
+      .mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: true }] })
+
+    const res = await request(app)
+      .post(ENDPOINT)
+      .set('x-batch-api-key', BATCH_API_KEY)
+      .send({ target_year: 2026, target_month: 8 })
+
+    expect(res.status).toBe(200)
+    expect(res.body.created).toEqual([{ tenant_id: 1, store_id: 5, plan_id: 111 }])
+    expect(res.body.failed_notification).toEqual([])
+    expect(axios.post).not.toHaveBeenCalled()
+  })
+
+  it('skips notification when NOTIFICATION_ENABLED is "false" (Issue #160)', async () => {
+    process.env.NOTIFICATION_ENABLED = 'false'
+    query
+      .mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
+      .mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: true }] })
+
+    const res = await request(app)
+      .post(ENDPOINT)
+      .set('x-batch-api-key', BATCH_API_KEY)
+      .send({ target_year: 2026, target_month: 8 })
+
+    expect(res.status).toBe(200)
+    expect(res.body.created).toEqual([{ tenant_id: 1, store_id: 5, plan_id: 111 }])
+    expect(axios.post).not.toHaveBeenCalled()
+  })
+
+  it('skips notification when NOTIFICATION_ENABLED has an unrelated value (Issue #160)', async () => {
+    process.env.NOTIFICATION_ENABLED = '1'
     query
       .mockResolvedValueOnce(makeStores({ tenant_id: 1, store_id: 5 }))
       .mockResolvedValueOnce({ rows: [{ plan_id: 111, inserted: true }] })

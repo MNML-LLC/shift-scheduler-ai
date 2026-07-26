@@ -36,6 +36,18 @@ function getLastDayOfMonth(year, month) {
 }
 
 /**
+ * LINE通知が有効かを判定する。
+ *
+ * `NOTIFICATION_ENABLED` 環境変数が文字列 `'true'` の場合のみ有効。
+ * 未設定・空文字・その他の値はすべて `false`（安全側フォールバック）として扱う。
+ *
+ * 詳細な運用手順は docs/operations/monthly-first-plan-batch.md を参照。
+ */
+function isLineNotificationEnabled() {
+  return process.env.NOTIFICATION_ENABLED === 'true';
+}
+
+/**
  * LINE通知: 第1案承認
  * LIFF backend の通知エンドポイントを叩く共通ヘルパー
  * （呼び出し元で process.env.LIFF_BACKEND_URL の有無を確認すること）
@@ -1227,7 +1239,8 @@ router.post('/plans/approve-first', async (req, res) => {
     );
 
     // LINE通知を送信（第1案承認）
-    if (process.env.LIFF_BACKEND_URL) {
+    // NOTIFICATION_ENABLED=true かつ LIFF_BACKEND_URL 設定時のみ送信
+    if (isLineNotificationEnabled() && process.env.LIFF_BACKEND_URL) {
       try {
         await notifyFirstPlanApproved({
           tenant_id: tenant_id,
@@ -1241,6 +1254,8 @@ router.post('/plans/approve-first', async (req, res) => {
         // 通知失敗は承認処理に影響させない（ログのみ）
         console.error('Failed to send LINE notification:', notifyError.message);
       }
+    } else if (!isLineNotificationEnabled()) {
+      console.log('LINE notification skipped: NOTIFICATION_ENABLED is not "true"');
     }
 
     res.json({
@@ -1372,7 +1387,8 @@ router.post('/plans/monthly-first-plan-batch', async (req, res) => {
 
         created.push({ tenant_id, store_id, plan_id });
 
-        if (process.env.LIFF_BACKEND_URL) {
+        // NOTIFICATION_ENABLED=true かつ LIFF_BACKEND_URL 設定時のみ送信
+        if (isLineNotificationEnabled() && process.env.LIFF_BACKEND_URL) {
           try {
             await notifyFirstPlanApproved({
               tenant_id,
@@ -3010,7 +3026,13 @@ router.put('/plans/:plan_id/status', async (req, res) => {
     const plan = planCheck.rows[0];
 
     // 第1案がAPPROVEDになった場合、LINE通知を送信（シフト希望入力開始）
-    if (status === 'APPROVED' && plan.plan_type === 'FIRST' && process.env.LIFF_BACKEND_URL) {
+    // NOTIFICATION_ENABLED=true かつ LIFF_BACKEND_URL 設定時のみ送信
+    if (
+      status === 'APPROVED' &&
+      plan.plan_type === 'FIRST' &&
+      isLineNotificationEnabled() &&
+      process.env.LIFF_BACKEND_URL
+    ) {
       try {
         await axios.post(`${process.env.LIFF_BACKEND_URL}/api/notification/first-plan-approved`, {
           tenant_id: plan.tenant_id,
@@ -3024,6 +3046,8 @@ router.put('/plans/:plan_id/status', async (req, res) => {
         // 通知失敗は承認処理に影響させない（ログのみ）
         console.error('Failed to send LINE notification:', notifyError.message);
       }
+    } else if (status === 'APPROVED' && plan.plan_type === 'FIRST' && !isLineNotificationEnabled()) {
+      console.log('LINE notification skipped: NOTIFICATION_ENABLED is not "true"');
     }
 
     // 第2案承認通知は無効化（2024/12/15）
