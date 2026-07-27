@@ -100,7 +100,14 @@ router.get('/payroll', async (req, res, next) => {
  */
 router.get('/sales-actual', async (req, res, next) => {
   try {
-    const { tenant_id = 1, store_id, year, month } = req.query;
+    const { tenant_id, store_id, year, month } = req.query;
+
+    if (tenant_id === undefined || tenant_id === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'tenant_id is required'
+      });
+    }
 
     let queryText = `
       SELECT
@@ -163,7 +170,14 @@ router.get('/sales-actual', async (req, res, next) => {
  */
 router.get('/sales-forecast', async (req, res, next) => {
   try {
-    const { tenant_id = 1, store_id, year, month } = req.query;
+    const { tenant_id, store_id, year, month } = req.query;
+
+    if (tenant_id === undefined || tenant_id === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'tenant_id is required'
+      });
+    }
 
     let queryText = `
       SELECT
@@ -227,7 +241,14 @@ router.get('/sales-forecast', async (req, res, next) => {
  */
 router.get('/dashboard-metrics', async (req, res, next) => {
   try {
-    const { tenant_id = 1, metric_name, status } = req.query;
+    const { tenant_id, metric_name, status } = req.query;
+
+    if (tenant_id === undefined || tenant_id === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'tenant_id is required'
+      });
+    }
 
     let queryText = `
       SELECT
@@ -284,7 +305,14 @@ router.get('/dashboard-metrics', async (req, res, next) => {
  */
 router.post('/work-hours', async (req, res, next) => {
   try {
-    const { tenant_id = 1, data } = req.body;
+    const { tenant_id, data } = req.body;
+
+    if (tenant_id === undefined || tenant_id === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'tenant_id is required'
+      });
+    }
 
     if (!data || !Array.isArray(data) || data.length === 0) {
       return res.status(400).json({
@@ -374,7 +402,14 @@ router.post('/work-hours', async (req, res, next) => {
  */
 router.post('/payroll', async (req, res, next) => {
   try {
-    const { tenant_id = 1, data } = req.body;
+    const { tenant_id, data } = req.body;
+
+    if (tenant_id === undefined || tenant_id === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'tenant_id is required'
+      });
+    }
 
     if (!data || !Array.isArray(data) || data.length === 0) {
       return res.status(400).json({
@@ -475,7 +510,14 @@ router.post('/payroll', async (req, res, next) => {
  */
 router.post('/sales-actual', async (req, res, next) => {
   try {
-    const { tenant_id = 1, data } = req.body;
+    const { tenant_id, data } = req.body;
+
+    if (tenant_id === undefined || tenant_id === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'tenant_id is required'
+      });
+    }
 
     if (!data || !Array.isArray(data) || data.length === 0) {
       return res.status(400).json({
@@ -566,7 +608,14 @@ router.post('/sales-actual', async (req, res, next) => {
  */
 router.post('/sales-forecast', async (req, res, next) => {
   try {
-    const { tenant_id = 1, data } = req.body;
+    const { tenant_id, data } = req.body;
+
+    if (tenant_id === undefined || tenant_id === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'tenant_id is required'
+      });
+    }
 
     if (!data || !Array.isArray(data) || data.length === 0) {
       return res.status(400).json({
