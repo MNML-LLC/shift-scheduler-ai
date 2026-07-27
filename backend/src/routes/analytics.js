@@ -9,7 +9,14 @@ const router = express.Router();
  */
 router.get('/payroll', async (req, res, next) => {
   try {
-    const { tenant_id = 1, store_id, staff_id, year, month } = req.query;
+    const { tenant_id, store_id, staff_id, year, month } = req.query;
+
+    if (tenant_id === undefined || tenant_id === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'tenant_id is required'
+      });
+    }
 
     let queryText = `
       SELECT
