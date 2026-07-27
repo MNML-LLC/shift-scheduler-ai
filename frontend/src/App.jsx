@@ -38,7 +38,7 @@ function AppContent() {
   const [showShiftCreationMethodSelector, setShowShiftCreationMethodSelector] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [shiftStatus, setShiftStatus] = useState({
-    10: 'not_started', // 10月のステータス
+    [getCurrentMonth()]: 'not_started',
   })
   const [showLineMessages, setShowLineMessages] = useState(false)
   const [showMonitoring, setShowMonitoring] = useState(false)
@@ -487,7 +487,8 @@ function AppContent() {
 
   const approveFirstPlan = () => {
     // 第1案を仮承認してダッシュボードに戻る
-    setShiftStatus({ ...shiftStatus, 10: 'first_plan_approved' })
+    const targetMonth = selectedShiftForEdit?.month ?? getCurrentMonth()
+    setShiftStatus({ ...shiftStatus, [targetMonth]: 'first_plan_approved' })
     setHasUnsavedChanges(false)
     setShowDraftShiftEditor(false)
     setShowShiftDashboard(true)
