@@ -15,11 +15,39 @@ export class DatabaseUnavailableError extends Error {
   }
 }
 
-// Railway PostgreSQL接続設定
+// Railway PostgreSQL 接続プール設定
+//
+// 設計根拠:
+// - max: Railway の無料/ホビープランでは接続数上限が比較的小さく（〜20 程度）、
+//   API サーバー複数インスタンス + マイグレーション/バックアップスクリプト等の
+//   同時接続を考慮して 1 インスタンスあたり max=10 をデフォルトとする。
+//   高負荷時に不足する場合は `MAX_POOL_SIZE` で調整可能。
+// - idleTimeoutMillis: 30s。アイドル接続を早めに解放し、
+//   Railway 側の接続数上限を圧迫しないようにする。
+// - connectionTimeoutMillis: 10s。接続取得が長時間ブロックされた場合、
+//   fail-fast させてリクエスト全体のレスポンス遅延を防ぐ（上位で 503 に変換）。
+const DEFAULT_MAX_POOL_SIZE = 10
+const DEFAULT_IDLE_TIMEOUT_MS = 30_000
+const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000
+
+const parsedMaxPoolSize = parseInt(process.env.MAX_POOL_SIZE, 10)
+const maxPoolSize = Number.isFinite(parsedMaxPoolSize) && parsedMaxPoolSize > 0
+  ? parsedMaxPoolSize
+  : DEFAULT_MAX_POOL_SIZE
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  max: maxPoolSize,
+  idleTimeoutMillis: DEFAULT_IDLE_TIMEOUT_MS,
+  connectionTimeoutMillis: DEFAULT_CONNECTION_TIMEOUT_MS
 });
+
+console.log(
+  `🗄️  DB pool config: max=${maxPoolSize}, ` +
+    `idleTimeoutMillis=${DEFAULT_IDLE_TIMEOUT_MS}, ` +
+    `connectionTimeoutMillis=${DEFAULT_CONNECTION_TIMEOUT_MS}`
+);
 
 // 接続テスト
 pool.on('connect', async (client) => {
