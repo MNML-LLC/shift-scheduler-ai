@@ -209,22 +209,73 @@ ERROR: syntax error at or near
 
 ## データベース変更管理方針
 
-このプロジェクトでは**DDL/DML方式**でデータベースを管理します。
+このプロジェクトでは **node-pg-migrate によるマイグレーション方式** でデータベースを管理します（Issue #64 / #181 で移行）。
 
-- **DDL（スキーマ定義）**: `ddl/schema.sql`にすべてのテーブル定義を記載
-- **DML（初期データ）**: `dml/*.sql`にマスターデータを記載
-- **マイグレーション機能は使用しません**: 既存のschema.sqlを直接編集してください
+- **DDL（初期スキーマ）**: `ddl/schema.sql` はベースラインスナップショットとして維持
+- **DML（初期データ）**: `dml/*.sql` にマスターデータを記載
+- **スキーマ変更**: `scripts/database/migrations/` に `<timestamp>_<name>.js` 形式で追加する
+- **マイグレーション履歴**: DB 側の `pgmigrations` テーブルで管理される
+- **archive/**: 旧一回限り修正スクリプト（`check_jan2026.mjs` など）を保存。実行対象外
 
-### スキーマ変更時の手順
+### 新しいマイグレーション作成手順
 
-1. **ローカル環境で変更**:
-   - `ddl/schema.sql`を編集
-   - `node setup.mjs --env dev`でローカルDBに適用
-   - アプリケーションをテスト
+1. **新しいマイグレーションファイルを作成**:
+   ```bash
+   cd backend
+   npm run db:migrate:create -- my-change-description
+   ```
+   → `scripts/database/migrations/<timestamp>_my-change-description.js` が生成される
 
-2. **Railway（本番/開発環境）への適用**:
-   - Railway Consoleで直接SQLを実行
-   - または、setup.mjsを使ってRailwayのDATABASE_URLに対して実行
+2. **`up` / `down` を実装**:
+   ```js
+   export const shorthands = undefined
+
+   export async function up(pgm) {
+     pgm.addColumn({ schema: 'ops', name: 'shifts' }, {
+       note: { type: 'text', notNull: false },
+     })
+   }
+
+   export async function down(pgm) {
+     pgm.dropColumn({ schema: 'ops', name: 'shifts' }, 'note')
+   }
+   ```
+   詳細な API は [node-pg-migrate ドキュメント](https://salsita.github.io/node-pg-migrate/) を参照
+
+3. **ローカル DB に適用**:
+   ```bash
+   cd backend
+   npm run db:migrate:up
+   ```
+
+4. **ロールバック（開発中のみ）**:
+   ```bash
+   cd backend
+   npm run db:migrate:down
+   ```
+
+5. **未適用マイグレーションの確認（dry-run）**:
+   ```bash
+   cd backend
+   npm run db:migrate:status
+   ```
+
+### staging / production への適用
+
+- **staging**: PR マージ → デプロイ後に shift M 層が `npm run db:migrate:up` を手動実行
+- **production**: staging での動作確認後、shift M 層が `npm run db:migrate:up` を手動実行
+- **既存 DB を新マイグレーション管理下に取り込む場合**: `npm run db:migrate:fake` でベースライン相当分を "適用済み" としてマークする（実 DDL は流さない）
+- **本番 DB への破壊的操作は shift M 層のみが実施**。ベンダーやコード生成エージェントは実行しないこと
+
+### スキーマ変更の全体フロー
+
+```
+ローカル: マイグレーション作成 → db:migrate:up で検証 → PR
+    ↓
+マージ後 staging: shift M 層が npm run db:migrate:up を手動実行
+    ↓
+production: staging で問題なければ shift M 層が同様に手動実行
+```
 
 ## 注意事項
 
