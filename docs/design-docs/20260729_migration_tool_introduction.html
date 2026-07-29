@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マイグレーション管理ツール導入設計 - 設計フェーズ Issue #177（親 Issue: #64）</title>
+    <meta name="issue" content="設計フェーズ Issue #177（親 Issue: #64）">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.7;
+            color: #2c3e50;
+            background: #f5f7fa;
+            padding: 24px;
+        }
+        .container {
+            max-width: 1180px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 48px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            border-radius: 10px;
+        }
+        h1 {
+            color: #1a252f;
+            border-bottom: 4px solid #2980b9;
+            padding-bottom: 16px;
+            margin-bottom: 12px;
+            font-size: 2.2em;
+        }
+        h2 {
+            color: #1a252f;
+            margin-top: 44px;
+            margin-bottom: 18px;
+            font-size: 1.6em;
+            border-left: 6px solid #2980b9;
+            padding-left: 14px;
+        }
+        h3 {
+            color: #34495e;
+            margin-top: 26px;
+            margin-bottom: 12px;
+            font-size: 1.2em;
+        }
+        h4 {
+            color: #34495e;
+            margin-top: 18px;
+            margin-bottom: 8px;
+            font-size: 1.05em;
+        }
+        p { margin-bottom: 12px; }
+        ul, ol { margin-left: 24px; margin-bottom: 12px; }
+        li { margin-bottom: 4px; }
+        code {
+            background: #eef2f6;
+            color: #c0392b;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+            font-size: 0.92em;
+        }
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 18px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+            font-size: 0.88em;
+            line-height: 1.5;
+            margin: 12px 0;
+        }
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: inherit;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0 24px 0;
+            font-size: 0.94em;
+        }
+        th, td {
+            border: 1px solid #dfe4ea;
+            padding: 10px 14px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #2980b9;
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) { background: #f8fafc; }
+        .meta {
+            background: #eef7fb;
+            border-left: 4px solid #2980b9;
+            padding: 14px 18px;
+            border-radius: 4px;
+            margin-bottom: 24px;
+            font-size: 0.95em;
+        }
+        .meta table { margin: 0; font-size: 0.95em; }
+        .meta td { border: none; padding: 4px 12px 4px 0; }
+        .meta td:first-child { font-weight: 600; width: 140px; color: #1a5989; }
+        .success {
+            background: #e8f8ef;
+            border-left: 4px solid #27ae60;
+            padding: 14px 18px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+        .warning {
+            background: #fff8e1;
+            border-left: 4px solid #f39c12;
+            padding: 14px 18px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+        .info {
+            background: #eef7fb;
+            border-left: 4px solid #2980b9;
+            padding: 14px 18px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+        .danger {
+            background: #fdecea;
+            border-left: 4px solid #e74c3c;
+            padding: 14px 18px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: white;
+        }
+        .badge-recommend { background: #27ae60; }
+        .badge-alt { background: #7f8c8d; }
+        .badge-avoid { background: #e74c3c; }
+        .badge-p2 { background: #f39c12; }
+        .tag {
+            display: inline-block;
+            background: #ecf0f1;
+            color: #2c3e50;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.82em;
+            margin-right: 4px;
+        }
+        .phase {
+            background: #f8fafc;
+            border: 1px solid #dfe4ea;
+            border-left: 4px solid #2980b9;
+            padding: 16px 20px;
+            border-radius: 4px;
+            margin: 12px 0;
+        }
+        .phase h4 { margin-top: 0; color: #1a5989; }
+        .toc {
+            background: #f8fafc;
+            border: 1px solid #dfe4ea;
+            padding: 18px 24px;
+            border-radius: 6px;
+            margin-bottom: 32px;
+        }
+        .toc ol { margin-left: 20px; }
+        .toc a { color: #2980b9; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .footer {
+            margin-top: 60px;
+            padding-top: 20px;
+            border-top: 1px solid #dfe4ea;
+            font-size: 0.85em;
+            color: #7f8c8d;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>マイグレーション管理ツール導入設計</h1>
+
+        <div class="meta">
+            <table>
+                <tr><td>Issue</td><td>設計フェーズ Issue #177（親 Issue: #64）</td></tr>
+                <tr><td>優先度</td><td><span class="badge badge-p2">P2</span></td></tr>
+                <tr><td>M層</td><td>shift（自発）</td></tr>
+                <tr><td>作成日</td><td>2026-07-29</td></tr>
+                <tr><td>フェーズ</td><td>設計調査（実装は本 Issue のスコープ外）</td></tr>
+                <tr><td>成果物</td><td>本 HTML ドキュメント</td></tr>
+            </table>
+        </div>
+
+        <div class="toc">
+            <strong>目次</strong>
+            <ol>
+                <li><a href="#sec1">背景と目的</a></li>
+                <li><a href="#sec2">現状分析（実測ベース）</a></li>
+                <li><a href="#sec3">ツール選定比較</a></li>
+                <li><a href="#sec4">推奨ツールと根拠</a></li>
+                <li><a href="#sec5">移行計画（既存 <code>schema.sql</code> の取り込み）</a></li>
+                <li><a href="#sec6">既存ワークアラウンドの扱い</a></li>
+                <li><a href="#sec7">ディレクトリ構成とファイル命名規則</a></li>
+                <li><a href="#sec8">CI 統合設計</a></li>
+                <li><a href="#sec9">ロールアウト計画</a></li>
+                <li><a href="#sec10">リスクと緩和策</a></li>
+                <li><a href="#sec11">未決事項 / 次アクション</a></li>
+            </ol>
+        </div>
+
+        <h2 id="sec1">1. 背景と目的</h2>
+        <p>
+            現状、DB スキーマは <code>scripts/database/ddl/schema.sql</code> の単一ファイルで管理されており、
+            変更履歴・適用状況・環境間の一貫性を保証する仕組みが存在しない。
+            2025-11 に発生した本番のスキーマドリフト（<code>ops.shift_plans</code> の UNIQUE 制約欠落）は、
+            起動時ワークアラウンド（<code>ensureShiftPlansUniqueConstraint.js</code>）で暫定対処されているが、
+            これは根本解決ではない。
+        </p>
+        <p>
+            本設計では、Node.js + PostgreSQL + Railway という技術スタックに適合するマイグレーション管理ツールを選定し、
+            既存 <code>schema.sql</code> を「初期状態のスナップショット」として取り込みつつ、
+            以降のスキーマ変更を追跡可能・再現可能・レビュー可能にするための移行計画と CI 統合方針を定める。
+        </p>
+
+        <div class="info">
+            <strong>本 Issue のスコープ:</strong>
+            <ul>
+                <li>ツール比較・選定の根拠を明文化する</li>
+                <li>移行手順とディレクトリ構成を設計する</li>
+                <li>CI 統合ジョブを設計する</li>
+            </ul>
+            <strong>本 Issue のスコープ外:</strong>
+            <ul>
+                <li>実際のツール導入・依存追加・初期マイグレーションの生成（別 Issue で実装）</li>
+                <li>staging / production への実適用</li>
+            </ul>
+        </div>
+
+        <h2 id="sec2">2. 現状分析（実測ベース）</h2>
+
+        <h3>2-1. スキーマ管理の実態</h3>
+        <table>
+            <thead>
+                <tr><th>項目</th><th>実測値</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>スキーマ定義</td>
+                    <td><code>scripts/database/ddl/schema.sql</code>（968 行、単一ファイル、変更履歴なし）</td>
+                </tr>
+                <tr>
+                    <td>スキーマ数</td>
+                    <td>4 個: <code>core</code> / <code>hr</code> / <code>ops</code> / <code>analytics</code></td>
+                </tr>
+                <tr>
+                    <td>過去の追加変更</td>
+                    <td><code>scripts/database/migrations/20241203_split_shibuya_store.sql</code>（DML 1 件、手動適用想定）</td>
+                </tr>
+                <tr>
+                    <td>「migration」名の実装</td>
+                    <td><code>backend/src/migrations/ensureShiftPlansUniqueConstraint.js</code> 1 ファイルのみ<br>
+                        （サーバー起動時に <code>startServer()</code> から冪等実行されるワークアラウンド）</td>
+                </tr>
+                <tr>
+                    <td>マスターデータ投入</td>
+                    <td><code>scripts/database/dml/*.sql</code>（3 ファイル、<code>setup.mjs</code> から一括実行）</td>
+                </tr>
+                <tr>
+                    <td>スキーマ変更手順（既定）</td>
+                    <td><code>schema.sql</code> を直接編集 → <code>setup.mjs</code> でローカル再構築 → Railway Console で SQL を手動実行<br>
+                        （<code>scripts/database/README.md</code> 210-227 行目に明記）</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>2-2. 技術スタック</h3>
+        <table>
+            <thead>
+                <tr><th>要素</th><th>バージョン / 実装</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>ランタイム</td><td>Node.js ≥18, ESM（<code>"type": "module"</code>）</td></tr>
+                <tr><td>フレームワーク</td><td>Express 5.2.x</td></tr>
+                <tr><td>DB ドライバ</td><td><code>pg</code> 8.22.x（node-postgres）</td></tr>
+                <tr><td>DB</td><td>PostgreSQL 15+（Railway）</td></tr>
+                <tr><td>テスト</td><td>Vitest 4.x + supertest</td></tr>
+                <tr><td>Lint</td><td>ESLint 10.x（Flat Config）</td></tr>
+                <tr><td>マイグレーションツール依存</td><td>なし（<code>backend/package.json</code> 実測）</td></tr>
+            </tbody>
+        </table>
+
+        <h3>2-3. 現状の問題点</h3>
+        <div class="danger">
+            <ul>
+                <li><strong>変更履歴が不在:</strong> <code>schema.sql</code> は Git 履歴で追えるが、環境ごとに「どの状態が適用済みか」を機械的に判定できない。</li>
+                <li><strong>本番への適用がヒトの手作業:</strong> Railway Console での手動 SQL 実行に依存しており、実行漏れ・実行順序ズレのリスクがある（実際に <code>ops.shift_plans</code> のドリフトが発生）。</li>
+                <li><strong>ロールバック不可:</strong> 前方への変更しか記述されておらず、失敗時の巻き戻し手順が定義されていない。</li>
+                <li><strong>staging / production の乖離検出不能:</strong> 環境間でスキーマが揃っているかをコードから確認する術がない。</li>
+                <li><strong>起動時マイグレーションは根本解決ではない:</strong> ワークアラウンドが増え続けると <code>server.js</code> の起動シーケンスが肥大化・複雑化する。</li>
+            </ul>
+        </div>
+
+        <h2 id="sec3">3. ツール選定比較</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 15%;">項目</th>
+                    <th style="width: 21%;">node-pg-migrate</th>
+                    <th style="width: 21%;">db-migrate</th>
+                    <th style="width: 21%;">Knex (migrations)</th>
+                    <th style="width: 22%;">Flyway</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>実装言語 / 実行環境</strong></td>
+                    <td>Node.js（本プロジェクトと同一）</td>
+                    <td>Node.js</td>
+                    <td>Node.js</td>
+                    <td>Java（JRE 必須）</td>
+                </tr>
+                <tr>
+                    <td><strong>ESM 対応</strong></td>
+                    <td>◎ v7 系で ESM マイグレーションファイル可（<code>.js</code> / <code>.mjs</code> / <code>.ts</code>）</td>
+                    <td>△ CommonJS が既定、ESM 対応は限定的</td>
+                    <td>○ ESM 動作可（Knex 本体は CJS）</td>
+                    <td>◎ 純 SQL ファイルのため言語非依存</td>
+                </tr>
+                <tr>
+                    <td><strong>複数スキーマ対応<br>(core/hr/ops/analytics)</strong></td>
+                    <td>◎ <code>schema</code> オプション、任意の SQL で対応可</td>
+                    <td>○ 対応可だが設定に癖あり</td>
+                    <td>○ <code>withSchema()</code> で対応可</td>
+                    <td>◎ SQL 直書きのため制約なし</td>
+                </tr>
+                <tr>
+                    <td><strong>PostgreSQL 特化度</strong></td>
+                    <td>◎ Postgres 専用（<code>pg</code> ベース）</td>
+                    <td>△ 汎用（MySQL/PG/SQLite）</td>
+                    <td>△ 汎用（クエリビルダ寄り）</td>
+                    <td>◎ 全 RDB 対応</td>
+                </tr>
+                <tr>
+                    <td><strong>マイグレーション記述</strong></td>
+                    <td>JS（up/down 関数）+ 生 SQL 併用可</td>
+                    <td>JS または SQL</td>
+                    <td>JS（Knex QueryBuilder）</td>
+                    <td>SQL のみ（V___xxx.sql / U___xxx.sql）</td>
+                </tr>
+                <tr>
+                    <td><strong>ロールバック（down）</strong></td>
+                    <td>◎ ネイティブサポート</td>
+                    <td>◎ サポートあり</td>
+                    <td>◎ サポートあり</td>
+                    <td>△ OSS 版は Undo 不可（有償版のみ）</td>
+                </tr>
+                <tr>
+                    <td><strong>トランザクション</strong></td>
+                    <td>◎ 各マイグレーションを 1 TX で実行（無効化も可）</td>
+                    <td>○ サポートあり</td>
+                    <td>○ サポートあり</td>
+                    <td>◎ サポートあり</td>
+                </tr>
+                <tr>
+                    <td><strong>CI 統合</strong></td>
+                    <td>◎ <code>npx node-pg-migrate up</code> 一発、<code>--dry-run</code> あり</td>
+                    <td>○ CLI あり</td>
+                    <td>○ <code>knex migrate:latest</code></td>
+                    <td>△ Docker or JRE セットアップが CI に必要</td>
+                </tr>
+                <tr>
+                    <td><strong>Railway 適合性</strong></td>
+                    <td>◎ Nixpacks の Node 環境で追加設定不要</td>
+                    <td>◎ 同上</td>
+                    <td>◎ 同上</td>
+                    <td>△ Java ランタイム追加が必要</td>
+                </tr>
+                <tr>
+                    <td><strong>メンテナンス状況<br>(2026-07 時点)</strong></td>
+                    <td>◎ 継続的リリース、GitHub Stars 1.5k+、活発</td>
+                    <td>△ 2023 以降リリース頻度が低下、依存が古い</td>
+                    <td>◎ Knex は活発だが migrations は副機能</td>
+                    <td>◎ Redgate 傘下で活発</td>
+                </tr>
+                <tr>
+                    <td><strong>追加依存の重さ</strong></td>
+                    <td>軽（<code>pg</code> を再利用）</td>
+                    <td>中（複数ドライバ抱え込み）</td>
+                    <td>重（Knex 本体一式）</td>
+                    <td>重（外部ランタイム）</td>
+                </tr>
+                <tr>
+                    <td><strong>学習コスト</strong></td>
+                    <td>低（生 SQL + 薄いラッパ）</td>
+                    <td>中</td>
+                    <td>高（Knex QueryBuilder 前提）</td>
+                    <td>低（SQL のみ）</td>
+                </tr>
+                <tr>
+                    <td><strong>総合評価</strong></td>
+                    <td><span class="badge badge-recommend">推奨</span></td>
+                    <td><span class="badge badge-avoid">非推奨</span></td>
+                    <td><span class="badge badge-alt">代替候補</span></td>
+                    <td><span class="badge badge-alt">代替候補</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="sec4">4. 推奨ツールと根拠</h2>
+
+        <div class="success">
+            <strong>推奨: <code>node-pg-migrate</code></strong>
+        </div>
+
+        <h3>4-1. 選定理由</h3>
+        <ol>
+            <li>
+                <strong>技術スタック整合性:</strong>
+                本プロジェクトは Node.js ESM + <code>pg</code> ドライバで完結している。
+                <code>node-pg-migrate</code> は同じ <code>pg</code> ドライバをそのまま使うため、
+                接続設定（<code>DATABASE_URL</code>）を含めた既存資産を再利用できる。追加ランタイム（JRE 等）は不要。
+            </li>
+            <li>
+                <strong>複数スキーマとの相性:</strong>
+                <code>core</code> / <code>hr</code> / <code>ops</code> / <code>analytics</code> の 4 スキーマ横断的な
+                DDL を生 SQL（<code>pgm.sql()</code>）で自由に記述でき、DSL に閉じ込められない。
+                既存の <code>schema.sql</code>（968 行）をほぼそのまま初期マイグレーションに取り込める。
+            </li>
+            <li>
+                <strong>ロールバック標準サポート:</strong>
+                up / down が対でファイル化されるため、失敗時の巻き戻しが CLI 一発で可能（<code>node-pg-migrate down</code>）。
+                Flyway OSS 版と比較した優位点。
+            </li>
+            <li>
+                <strong>CI 適合:</strong>
+                <code>npx node-pg-migrate up --dry-run</code> で未適用マイグレーションの検出、
+                <code>up</code> でトランザクション適用ができ、GitHub Actions のシンプルな Postgres サービスコンテナで検証できる。
+            </li>
+            <li>
+                <strong>メンテナンス継続性:</strong>
+                2026-07 時点で GitHub 上の活動が継続しており、後方互換性の維持ポリシーも明文化されている。
+            </li>
+            <li>
+                <strong>学習コスト最小化:</strong>
+                shift M層は Node.js + 生 SQL の運用に慣れており、Knex QueryBuilder の DSL を新規に習得する必要がない。
+            </li>
+        </ol>
+
+        <h3>4-2. 却下理由（他候補）</h3>
+        <ul>
+            <li><strong>db-migrate:</strong> 汎用 RDB 対応で PG 特化機能が弱く、メンテ活性が低下傾向。ESM 対応も限定的。</li>
+            <li><strong>Knex (migrations):</strong> Knex 本体の QueryBuilder を使わず migrations だけ利用するのは責務のミスマッチ。生 SQL 中心の運用と噛み合わない。</li>
+            <li><strong>Flyway:</strong> Java ランタイムの持ち込みが Railway・GitHub Actions 両方で追加コストになる。Undo が有償版限定で down が事実上使えない。純 SQL 志向は魅力だが、ロールバック不能の運用リスクが上回る。</li>
+        </ul>
+
+        <h2 id="sec5">5. 移行計画（既存 <code>schema.sql</code> の取り込み）</h2>
+
+        <h3>5-1. 基本方針</h3>
+        <p>
+            既存 <code>schema.sql</code>（968 行）を <strong>初期マイグレーション 1 本にまるごと取り込む</strong>（"baseline" 方式）。
+            過去の変更履歴を細分化して再現する必要はなく、
+            現在の staging / production のスキーマ状態を「バージョン 0000 = ベースライン」とみなす。
+        </p>
+
+        <h3>5-2. 段階</h3>
+        <div class="phase">
+            <h4>Phase 0: 準備（本 Issue の続きの実装 Issue）</h4>
+            <ul>
+                <li><code>backend/package.json</code> に <code>node-pg-migrate</code> を <code>devDependencies</code> として追加。</li>
+                <li>設定ファイル <code>backend/.node-pg-migraterc.json</code> を追加:
+                    <pre><code>{
+  "migrations-dir": "../scripts/database/migrations",
+  "migrations-table": "pgmigrations",
+  "migration-file-language": "js",
+  "database-url-var": "DATABASE_URL",
+  "check-order": true,
+  "verbose": true
+}</code></pre>
+                </li>
+                <li><code>backend/package.json</code> の <code>scripts</code> に以下を追加。<br>
+                    <strong>重要:</strong> node-pg-migrate は設定ファイルを暗黙にロードしない。
+                    <code>-f .node-pg-migraterc.json</code> を明示指定しない限り、
+                    <code>check-order</code> / <code>migrations-table</code> / <code>database-url-var</code> 等の設定は
+                    黙って無視される（CLI 実行は成功するが、意図した挙動にならない）。
+                    従って npm scripts の <strong>全行に <code>-f</code> を付与する</strong>。
+                    <pre><code>"db:migrate:up": "node-pg-migrate up -m ../scripts/database/migrations -f .node-pg-migraterc.json",
+"db:migrate:down": "node-pg-migrate down -m ../scripts/database/migrations -f .node-pg-migraterc.json",
+"db:migrate:create": "node-pg-migrate create -m ../scripts/database/migrations -f .node-pg-migraterc.json",
+"db:migrate:status": "node-pg-migrate up --dry-run -m ../scripts/database/migrations -f .node-pg-migraterc.json",
+"db:migrate:fake": "node-pg-migrate up --fake -m ../scripts/database/migrations -f .node-pg-migraterc.json"</code></pre>
+                </li>
+            </ul>
+        </div>
+
+        <div class="phase">
+            <h4>Phase 1: ベースライン化</h4>
+            <ul>
+                <li>初期マイグレーション <code>1735689600000_baseline-schema.js</code> を作成（UNIX epoch ms を接頭辞）。</li>
+                <li><code>up</code> 内で <code>scripts/database/ddl/schema.sql</code> の内容を <code>pgm.sql(fs.readFileSync(...))</code> で流し込む。<br>
+                    <em>注: schema.sql 自体は削除せず、ファイルロード方式で参照する（レビューしやすさと Git 差分の可視性を両立）。</em></li>
+                <li><code>down</code> は「意図的に空 or DROP SCHEMA CASCADE を明示コメント付きで記述」する。
+                    ベースラインの down は実運用で使うことはないが、記述の一貫性のために置く。</li>
+                <li>既存の staging / production DB に対しては、DDL は再適用せず <code>pgmigrations</code> テーブルにベースラインを「適用済み」として手動 INSERT する（下記 5-3 参照）。</li>
+            </ul>
+        </div>
+
+        <div class="phase">
+            <h4>Phase 2: 既存ワークアラウンドのマイグレーション化</h4>
+            <ul>
+                <li><code>1735689700000_add-shift-plans-unique-constraint.js</code> を追加。</li>
+                <li>up: <code>ops.shift_plans</code> の <code>unique_plan_per_store_month_type</code> 制約を追加（重複データ検出→エラーで停止する厳密モードに）。</li>
+                <li>down: 制約を DROP。</li>
+                <li>詳細は §6 参照。</li>
+            </ul>
+        </div>
+
+        <div class="phase">
+            <h4>Phase 3: 運用切替</h4>
+            <ul>
+                <li><code>scripts/database/README.md</code> の「マイグレーション機能は使用しません」記述を更新し、新フローに置換。</li>
+                <li>以降の schema 変更は「schema.sql を直接編集」ではなく「<code>npm run db:migrate:create</code> で新規マイグレーションを作成 → up 実行 → schema.sql を dump で再生成」に統一。</li>
+                <li>schema.sql は <em>最新スキーマの人間可読なリファレンス</em>として維持（真実の源はマイグレーション履歴）。</li>
+            </ul>
+        </div>
+
+        <h3>5-3. 既存環境へのベースライン適用手順（本番影響なし）</h3>
+        <p>
+            <code>node-pg-migrate</code> は既定で <code>public.pgmigrations</code> テーブルで適用履歴を管理する。
+            staging / production の既存 DB にはスキーマは既に存在しているため、
+            ベースラインマイグレーションの up を実行してはならない。
+            代わりに以下のいずれかの方法で「適用済み」としてマークする。
+        </p>
+
+        <h4>Option 比較</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 20%;">項目</th>
+                    <th style="width: 40%;">Option A: 手動 INSERT</th>
+                    <th style="width: 40%;">Option B: <code>--fake</code> フラグ</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>公式サポート</strong></td>
+                    <td>なし（<code>pgmigrations</code> の内部スキーマに直接依存）</td>
+                    <td>あり（node-pg-migrate の CLI 公式オプション:
+                        "The <code>fake</code> option marks migrations as run without execution"）</td>
+                </tr>
+                <tr>
+                    <td><strong>コマンド例</strong></td>
+                    <td><pre><code>INSERT INTO public.pgmigrations (name, run_on)
+VALUES ('1735689600000_baseline-schema', NOW());</code></pre></td>
+                    <td><pre><code># backend/ で
+npm run db:migrate:fake
+
+# 直接叩く場合
+node-pg-migrate \
+  -d $DATABASE_URL \
+  -m ../scripts/database/migrations \
+  -f .node-pg-migraterc.json \
+  --fake up</code></pre></td>
+                </tr>
+                <tr>
+                    <td><strong>スキーマ変更耐性</strong></td>
+                    <td>△ node-pg-migrate が <code>pgmigrations</code> のカラム（<code>id</code>, <code>name</code>, <code>run_on</code>）を将来変更した場合、
+                        INSERT 文が壊れる</td>
+                    <td>◎ CLI 公式インターフェースのため互換性が担保される</td>
+                </tr>
+                <tr>
+                    <td><strong>環境ごとの再現性</strong></td>
+                    <td>△ 手打ち SQL のため typo リスクあり</td>
+                    <td>◎ 同一コマンドを staging / production で反復可能</td>
+                </tr>
+                <tr>
+                    <td><strong>レビュー容易性</strong></td>
+                    <td>○ SQL 単発</td>
+                    <td>◎ npm script 化して差分レビュー可</td>
+                </tr>
+                <tr>
+                    <td><strong>選定</strong></td>
+                    <td><span class="badge badge-avoid">非推奨</span></td>
+                    <td><span class="badge badge-recommend">推奨</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="success">
+            <strong>推奨: <code>--fake</code> フラグを使用する</strong><br>
+            手動 INSERT は <code>pgmigrations</code> テーブル構造への依存が強く、node-pg-migrate 側の仕様変更で壊れるリスクがある。
+            公式サポートされた <code>--fake</code> を採用することで、CLI インターフェース経由でベースラインを「適用済み」化できる。
+        </div>
+
+        <h4>手順</h4>
+        <ol>
+            <li>staging DB の <code>DATABASE_URL</code> を Railway Console から取得し、環境変数として設定。</li>
+            <li>backend/ で <code>npm run db:migrate:fake</code> を実行（内部で <code>node-pg-migrate ... --fake up</code>）。
+                ベースラインマイグレーション <code>1735689600000_baseline-schema</code> が
+                <code>pgmigrations</code> に記録されるが、SQL は実行されない。</li>
+            <li>staging <code>/api/health</code> でエラーがないことを確認。</li>
+            <li>production DB に対して同じ操作を実行（Railway Console から shift M層が手動実行）。</li>
+        </ol>
+        <p>
+            この操作は <strong>staging → production の順で shift M層が手動実行</strong>する。
+            自動化しないのは、ベースライン適用済み化は環境ごとに 1 回だけ実行すべき冪等性のない一撃操作であり、
+            誤って本番の全マイグレーションが「適用済み」扱いになると復旧困難になるためである。
+        </p>
+
+        <h2 id="sec6">6. 既存ワークアラウンドの扱い</h2>
+
+        <p>
+            <code>backend/src/migrations/ensureShiftPlansUniqueConstraint.js</code>（起動時実行）は、
+            正式マイグレーション化した後に <strong>削除</strong>する。理由:
+        </p>
+        <ul>
+            <li>正式マイグレーションが staging / production に適用された時点で、起動時の冪等チェックは無価値になる。</li>
+            <li>起動時ロジックを残すとマイグレーションの真実の源が二重化し、混乱を招く。</li>
+            <li><code>server.js</code> 起動シーケンスから DB スキーマ操作を切り離すことで、責務分離を明確化する。</li>
+        </ul>
+
+        <h4>削除タイミング</h4>
+        <ol>
+            <li>正式マイグレーション（<code>1735689700000_add-shift-plans-unique-constraint.js</code>）を staging に適用し検証。</li>
+            <li>staging <code>/api/health</code> で <code>pg_constraint</code> に <code>unique_plan_per_store_month_type</code> が存在することを確認。</li>
+            <li>production に適用。</li>
+            <li>production 適用完了後、次の PR で <code>ensureShiftPlansUniqueConstraint.js</code> と <code>server.js</code> の呼び出しを削除。</li>
+        </ol>
+
+        <div class="warning">
+            <strong>注意:</strong> ワークアラウンドと正式マイグレーションを並存させる期間は最短にする（1 リリースサイクル以内が理想）。
+            並存中に本番でスキーマドリフトが再発した場合、どちらが復旧させたのかログで判別できるよう、
+            <code>appendLog</code> のメッセージにマーカーを追加すること。
+        </div>
+
+        <h2 id="sec7">7. ディレクトリ構成とファイル命名規則</h2>
+
+        <h3>7-1. ディレクトリ構成</h3>
+        <pre><code>shift-scheduler-ai/
+├── backend/
+│   ├── .node-pg-migraterc.json      # 新規: 設定ファイル
+│   ├── package.json                 # 更新: devDependencies に node-pg-migrate
+│   └── src/
+│       └── migrations/              # 削除予定 (§6 完了後)
+│           └── ensureShiftPlansUniqueConstraint.js
+└── scripts/database/
+    ├── ddl/
+    │   └── schema.sql               # 維持: 最新スキーマの人間可読リファレンス
+    ├── dml/                         # 維持: マスターデータ
+    ├── setup/                       # 維持: 開発環境セットアップ
+    ├── archive/                     # 新規: 歴史的 SQL の退避先 (live migration ではない)
+    │   └── 20241203_split_shibuya_store.sql   # 移動: 過去の手動 DML (参考用)
+    └── migrations/                  # 新規運用: JS マイグレーションのみ
+        ├── 1735689600000_baseline-schema.js   # 新規: ベースライン
+        └── 1735689700000_add-shift-plans-unique-constraint.js</code></pre>
+
+        <div class="danger">
+            <strong>重要（歴史的 SQL の扱い）:</strong>
+            node-pg-migrate は <code>migrations-dir</code> 内の <code>.sql</code> ファイルを <em>すべて live migration として読み込む</em>。
+            過去の <code>20241203_split_shibuya_store.sql</code> を migrations-dir にそのまま残すと、
+            <code>pgmigrations</code> に未登録のため pending 扱いとなり、
+            CI の <code>db:migrate:status</code>（dry-run）が恒常的に失敗する。
+            さらに staging / production で <code>db:migrate:up</code> を叩いた際に意図せず再実行されてしまう。<br><br>
+            <strong>対策:</strong> 歴史的 SQL は <code>scripts/database/archive/</code> へ退避し、
+            migrations-dir からは完全に外す。
+            過去に手動適用済みの内容が <code>schema.sql</code>（ベースライン）に含まれていることを別途確認し、
+            ベースラインの <code>--fake</code> 適用（§5-3）と同じタイミングで
+            <code>pgmigrations</code> テーブルに「適用済み」として記録すべきかを判断する
+            （本件は 2024-12 の店舗分割 DML であり、すでに全環境で適用済み・以降参照されないため <code>archive/</code> 退避のみで十分）。
+        </div>
+
+        <div class="warning">
+            <strong>命名衝突リスク（<code>check-order: true</code> との整合性）:</strong>
+            <code>check-order: true</code> は
+            マイグレーションファイル名の <strong>文字列辞書順</strong>で適用順序を検証する。
+            旧命名の <code>YYYYMMDD</code> プレフィックス（例: <code>20241203_...</code>）と
+            新命名の unix epoch ms（例: <code>1735689600000_...</code>）を同居させると、
+            文字列比較では <code>1735689600000</code> &lt; <code>20241203</code> となり、
+            <em>新規追加のマイグレーションが旧 SQL より前に並ぶ</em>ため
+            <code>check-order</code> が失敗する。<br>
+            従って、歴史的 SQL を <code>archive/</code> へ退避することは
+            単なる整理ではなく <strong>node-pg-migrate 運用の必須条件</strong>である。
+            以降 migrations-dir 配下のファイル命名は <code>{unix_epoch_ms}_{kebab-case}.js</code> に統一する。
+        </div>
+
+        <div class="info">
+            <strong>設計判断:</strong> マイグレーション格納先は既存の <code>scripts/database/migrations/</code> を再利用する。
+            <code>backend/src/migrations/</code> は「起動時ワークアラウンド」の一時居場所だったため、正式ツール導入後は消滅させる。
+            <code>scripts/</code> 配下にまとめる利点は、backend アプリケーションと DB スキーマのライフサイクルが独立していることを構造で表現できる点。
+        </div>
+
+        <h3>7-2. ファイル命名規則</h3>
+        <table>
+            <thead>
+                <tr><th>形式</th><th>用途</th><th>例</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>{unix_epoch_ms}_{kebab-case-description}.js</code></td>
+                    <td>node-pg-migrate 標準形式（推奨）</td>
+                    <td><code>1735689700000_add-shift-plans-unique-constraint.js</code></td>
+                </tr>
+                <tr>
+                    <td><code>{YYYYMMDD}_{snake_case_description}.sql</code></td>
+                    <td>過去の手動 SQL（<code>scripts/database/archive/</code> に退避のみ、
+                        migrations-dir 配下には置かない・新規追加もしない）</td>
+                    <td><code>archive/20241203_split_shibuya_store.sql</code></td>
+                </tr>
+            </tbody>
+        </table>
+        <p>
+            unix epoch ms 形式は <code>node-pg-migrate create</code> が自動生成するため、
+            開発者はコマンドを叩くだけでよく、命名ゆれが発生しない。
+        </p>
+
+        <h3>7-3. マイグレーションファイルのテンプレート</h3>
+        <pre><code>// 1735689700000_add-shift-plans-unique-constraint.js
+export const shorthands = undefined
+
+export async function up(pgm) {
+  pgm.addConstraint('ops.shift_plans', 'unique_plan_per_store_month_type', {
+    unique: ['tenant_id', 'store_id', 'plan_year', 'plan_month', 'plan_type'],
+  })
+}
+
+export async function down(pgm) {
+  pgm.dropConstraint('ops.shift_plans', 'unique_plan_per_store_month_type')
+}</code></pre>
+
+        <h2 id="sec8">8. CI 統合設計</h2>
+
+        <h3>8-1. 目的</h3>
+        <ol>
+            <li>PR に含まれるマイグレーションが <strong>クリーンな DB に対して up 実行に成功する</strong>ことを確認する。</li>
+            <li>up → down → up の往復で冪等性を検証する。</li>
+            <li>マイグレーションが <code>schema.sql</code> と乖離していないことを検出する（optional）。</li>
+        </ol>
+
+        <h3>8-2. GitHub Actions ジョブ設計</h3>
+        <p>
+            <code>.github/workflows/ci.yml</code> に新規ジョブ <code>db-migration-check</code> を追加。
+            既存 <code>backend-check</code> と並列実行する。
+        </p>
+        <pre><code>  db-migration-check:
+    name: DB Migration Check
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: shift_scheduler_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/shift_scheduler_ci
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+
+      - name: Apply all migrations (up)
+        run: cd backend && npm run db:migrate:up
+
+      - name: Verify rollback of latest migration (down + up)
+        # PR で追加されたマイグレーションだけ down → up を往復させる
+        run: |
+          cd backend
+          ADDED=$(git diff --name-only --diff-filter=A origin/${{ github.base_ref }}...HEAD \
+            -- '../scripts/database/migrations/*.js' | wc -l)
+          if [ "$ADDED" -gt 0 ]; then
+            for i in $(seq 1 $ADDED); do
+              npm run db:migrate:down
+            done
+            npm run db:migrate:up
+          fi
+
+      - name: Detect pending migrations (dry-run)
+        run: cd backend && npm run db:migrate:status</code></pre>
+
+        <h3>8-3. ジョブ設計の意図</h3>
+        <ul>
+            <li><strong>Postgres 15 service コンテナ:</strong> production と同じメジャーバージョン。
+                Railway 側の設定と揃える。</li>
+            <li><strong>clean DB → up:</strong> ベースライン + 追加マイグレーションが順序通り成功することを保証。</li>
+            <li><strong>PR で追加された分だけ down/up 往復:</strong>
+                <code>down</code> が破壊的操作を含む場合、既存マイグレーションを巻き戻すと後続マイグレーションの前提が壊れる。
+                したがって PR で <em>新規追加された分</em>だけロールバックを試みる。</li>
+            <li><strong>--dry-run で pending 検出:</strong>
+                CI で up 済みの状態から更に pending がある = マイグレーションを追加したのに実行漏れがある兆候。</li>
+            <li><strong>npm scripts 経由で必ず <code>-f</code> を渡す:</strong>
+                CI から直接 <code>npx node-pg-migrate</code> を叩かず、
+                <code>-f .node-pg-migraterc.json</code> を含んだ npm scripts（§5-2）を呼ぶ。
+                これにより <code>check-order</code> が確実に有効化され、
+                タイムスタンプ順序のズレを CI で検知できる。</li>
+            <li><strong>migrations-dir は JS のみ:</strong>
+                歴史的 SQL は <code>scripts/database/archive/</code> に退避済みのため
+                （§7-1）、CI の <code>db:migrate:up</code> / <code>db:migrate:status</code> は
+                JS マイグレーションだけを対象にする。SQL が pending 扱いで dry-run を落とす事象は発生しない。</li>
+        </ul>
+
+        <h3>8-4. CI 落ちのハンドリング</h3>
+        <table>
+            <thead>
+                <tr><th>症状</th><th>典型原因</th><th>対処</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>up が失敗する</td>
+                    <td>SQL 構文エラー / 前提スキーマ不整合</td>
+                    <td>ローカルで <code>npm run db:migrate:up</code> 再現 → 修正</td>
+                </tr>
+                <tr>
+                    <td>down で失敗する</td>
+                    <td>down が未実装 or DROP 順序ミス</td>
+                    <td>down を実装 or 修正</td>
+                </tr>
+                <tr>
+                    <td>dry-run で pending 検出</td>
+                    <td>マイグレーションファイルの追加を忘れている</td>
+                    <td>ファイルを commit</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>8-5. Optional: schema.sql との差分検出</h3>
+        <p>
+            将来的な拡張として、CI で <code>pg_dump --schema-only</code> の結果と <code>scripts/database/ddl/schema.sql</code> の差分を検出するジョブを追加できる。
+            ただし PG のダンプは形式差（コメント順・引用符付与）が入りやすいため、
+            初期導入時はスコープ外とする。導入判断は運用開始 1 ヶ月後に見直す。
+        </p>
+
+        <h2 id="sec9">9. ロールアウト計画</h2>
+
+        <table>
+            <thead>
+                <tr><th>フェーズ</th><th>作業</th><th>環境</th><th>担当</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>依存追加 / 設定ファイル / npm scripts（全行 <code>-f</code> 付与）/
+                        <code>scripts/database/migrations/20241203_split_shibuya_store.sql</code> を
+                        <code>scripts/database/archive/</code> へ移動</td>
+                    <td>local + CI</td>
+                    <td>実装 Issue 担当</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>ベースラインマイグレーション作成 + CI ジョブ追加</td>
+                    <td>local + CI</td>
+                    <td>同上</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>staging DB に <code>npm run db:migrate:fake</code> でベースライン適用済み化</td>
+                    <td>staging (Railway Console から <code>DATABASE_URL</code> を取得して実行)</td>
+                    <td>shift M層</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>正式マイグレーションで <code>ops.shift_plans</code> 制約を追加（staging で <code>npm run db:migrate:up</code>）</td>
+                    <td>staging</td>
+                    <td>shift M層</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>staging 検証（<code>/api/health</code>, 主要画面, 1 回のシフト生成）</td>
+                    <td>staging</td>
+                    <td>shift M層</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>production DB に <code>npm run db:migrate:fake</code> でベースライン適用済み化 →
+                        <code>npm run db:migrate:up</code> で正式マイグレーション適用</td>
+                    <td>production (Railway Console)</td>
+                    <td>shift M層</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td>ワークアラウンド削除 PR（<code>ensureShiftPlansUniqueConstraint.js</code>）</td>
+                    <td>backend</td>
+                    <td>実装 Issue 担当</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="sec10">10. リスクと緩和策</h2>
+
+        <table>
+            <thead>
+                <tr><th>リスク</th><th>影響</th><th>緩和策</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>ベースラインの <code>--fake</code> 適用を忘れる</td>
+                    <td>本番でベースライン up が実行され、既存テーブルとの重複エラーで起動失敗</td>
+                    <td>デプロイ手順に明記 / staging での事前手順確認 / npm script <code>db:migrate:fake</code> をレビュー可能な形で用意 /
+                        <code>CREATE TABLE IF NOT EXISTS</code> のため実害は限定的だが、事故時にエラーで気付けるよう <code>CREATE TABLE</code> に変更する選択肢も検討</td>
+                </tr>
+                <tr>
+                    <td>Railway デプロイ時に自動でマイグレーションが走らない</td>
+                    <td>コードとスキーマが乖離、リリース後に 500 が発生</td>
+                    <td>初期導入時は <strong>手動適用</strong>とし、自動化は別 Issue で扱う（<code>predeploy</code> フック等の是非を含めて別途設計）</td>
+                </tr>
+                <tr>
+                    <td>複数開発者が同時にマイグレーションを追加、タイムスタンプの前後関係と適用順序が入れ替わる</td>
+                    <td>DB 状態がブランチ間で非決定的になる</td>
+                    <td><code>check-order: true</code> 設定で node-pg-migrate が起動時に検出。
+                        <strong>ただし node-pg-migrate は <code>.node-pg-migraterc.json</code> を暗黙にロードしない。
+                        npm scripts の全行に <code>-f .node-pg-migraterc.json</code> を付与して初めて有効になる</strong>
+                        （§5-2 参照）。CI ジョブでも同様に <code>-f</code> 付きで実行することを確認する。
+                        併せて PR レビューで順序を目視確認する。</td>
+                </tr>
+                <tr>
+                    <td>ワークアラウンドと正式マイグレーションの並存期間中に予期せぬ動作</td>
+                    <td>起動時に既存制約を再検出、無害だが冗長ログ</td>
+                    <td>並存期間を 1 リリース以内に短縮 / ログにフェーズマーカーを追加</td>
+                </tr>
+                <tr>
+                    <td><code>schema.sql</code> と実際のマイグレーション結果が乖離</td>
+                    <td>新環境立ち上げ時にスキーマ不整合</td>
+                    <td>マイグレーション追加時に <code>schema.sql</code> も同一 PR で更新するルール化（<code>docs/</code> にガイド追加、CI 差分検出は将来課題）</td>
+                </tr>
+                <tr>
+                    <td>マイグレーション失敗で production が中途半端な状態に</td>
+                    <td>データ整合性の破壊</td>
+                    <td>node-pg-migrate は既定で 1 マイグレーション 1 トランザクション / DDL 変更を伴う PR は staging 検証必須（既存フロー）</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="sec11">11. 未決事項 / 次アクション</h2>
+
+        <h3>未決事項（後続 Issue で議論）</h3>
+        <ul>
+            <li>Railway での自動マイグレーション適用（<code>predeploy</code> or Release Command）を採用するか</li>
+            <li><code>schema.sql</code> の生成を <code>pg_dump</code> で自動化するか（現状は手動再生成）</li>
+            <li>マイグレーション適用の GitHub Actions 手動ワークフロー化（<code>workflow_dispatch</code> で staging/production 選択適用）</li>
+            <li>データマイグレーション（DDL ではなく DML）のガイドライン策定</li>
+        </ul>
+
+        <h3>次アクション</h3>
+        <ol>
+            <li>本設計に対するレビュー / 承認</li>
+            <li>実装 Issue の起票（Phase 0〜2 を対象）</li>
+            <li>実装 Issue で本ドキュメントを参照しつつ導入 PR を作成</li>
+            <li>staging 検証 → production 適用 → ワークアラウンド削除 PR</li>
+        </ol>
+
+        <div class="footer">
+            設計日: 2026-07-29 / 更新: 2026-07-29 / M層: shift / 設計フェーズ Issue #177（親 Issue: #64）
+        </div>
+    </div>
+</body>
+</html>
