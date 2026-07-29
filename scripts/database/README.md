@@ -272,8 +272,6 @@ ERROR: syntax error at or near
 ```
 ローカル: マイグレーション作成 → db:migrate:up で検証 → PR
     ↓
-CI: db-migration-check がクリーン DB に対して up 成功を確認
-    ↓
 マージ後 staging: shift M 層が npm run db:migrate:up を手動実行
     ↓
 production: staging で問題なければ shift M 層が同様に手動実行
