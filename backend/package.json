@@ -12,11 +12,11 @@
     "lint:fix": "eslint . --fix",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "db:migrate:up": "node-pg-migrate up -m ../scripts/database/migrations -f .node-pg-migraterc.json",
-    "db:migrate:down": "node-pg-migrate down -m ../scripts/database/migrations -f .node-pg-migraterc.json",
-    "db:migrate:create": "node-pg-migrate create -m ../scripts/database/migrations -f .node-pg-migraterc.json",
-    "db:migrate:status": "node-pg-migrate up --dry-run -m ../scripts/database/migrations -f .node-pg-migraterc.json",
-    "db:migrate:fake": "node-pg-migrate up --fake -m ../scripts/database/migrations -f .node-pg-migraterc.json"
+    "db:migrate:up": "node-pg-migrate up -f .node-pg-migraterc.json",
+    "db:migrate:down": "node-pg-migrate down -f .node-pg-migraterc.json",
+    "db:migrate:create": "node-pg-migrate create -f .node-pg-migraterc.json",
+    "db:migrate:status": "node-pg-migrate up --dry-run -f .node-pg-migraterc.json",
+    "db:migrate:fake": "node-pg-migrate up --fake -f .node-pg-migraterc.json"
   },
   "dependencies": {
     "axios": "^1.18.1",
