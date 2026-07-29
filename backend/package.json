@@ -11,7 +11,12 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "db:migrate:up": "node-pg-migrate up -m ../scripts/database/migrations -f .node-pg-migraterc.json",
+    "db:migrate:down": "node-pg-migrate down -m ../scripts/database/migrations -f .node-pg-migraterc.json",
+    "db:migrate:create": "node-pg-migrate create -m ../scripts/database/migrations -f .node-pg-migraterc.json",
+    "db:migrate:status": "node-pg-migrate up --dry-run -m ../scripts/database/migrations -f .node-pg-migraterc.json",
+    "db:migrate:fake": "node-pg-migrate up --fake -m ../scripts/database/migrations -f .node-pg-migraterc.json"
   },
   "dependencies": {
     "axios": "^1.18.1",
@@ -33,6 +38,7 @@
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.0",
     "globals": "^17.8.0",
+    "node-pg-migrate": "^7",
     "supertest": "^7.2.2",
     "vitest": "^4.1.10"
   }
