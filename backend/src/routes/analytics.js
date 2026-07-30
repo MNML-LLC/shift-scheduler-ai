@@ -14,7 +14,7 @@ router.get('/payroll', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required'
+        error: 'tenant_id は必須です'
       });
     }
 
@@ -105,7 +105,7 @@ router.get('/sales-actual', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required'
+        error: 'tenant_id は必須です'
       });
     }
 
@@ -175,7 +175,7 @@ router.get('/sales-forecast', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required'
+        error: 'tenant_id は必須です'
       });
     }
 
@@ -246,7 +246,7 @@ router.get('/dashboard-metrics', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required'
+        error: 'tenant_id は必須です'
       });
     }
 
@@ -310,7 +310,7 @@ router.post('/work-hours', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required'
+        error: 'tenant_id は必須です'
       });
     }
 
@@ -407,7 +407,7 @@ router.post('/payroll', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required'
+        error: 'tenant_id は必須です'
       });
     }
 
@@ -515,7 +515,7 @@ router.post('/sales-actual', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required'
+        error: 'tenant_id は必須です'
       });
     }
 
@@ -613,7 +613,7 @@ router.post('/sales-forecast', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required'
+        error: 'tenant_id は必須です'
       });
     }
 

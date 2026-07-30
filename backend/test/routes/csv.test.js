@@ -47,7 +47,8 @@ describe('CSV Routes', () => {
 
       expect(response.status).toBe(400)
       expect(response.body).toHaveProperty('error')
-      expect(response.body.error).toBe('filename and content are required')
+      expect(response.body.error).toBe('ファイル名とコンテンツは必須です')
+      expect(response.body.code).toBe('VALIDATION_ERROR')
     })
 
     it('should return 400 when content is missing', async () => {
@@ -75,7 +76,8 @@ describe('CSV Routes', () => {
 
       expect(response.status).toBe(500)
       expect(response.body).toHaveProperty('error')
-      expect(response.body.error).toBe('File system error')
+      expect(response.body.error).toBe('ファイル処理でエラーが発生しました')
+      expect(response.body.code).toBe('CSV_ERROR')
     })
   })
 })

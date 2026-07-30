@@ -6,11 +6,19 @@ import { appendLog } from '../utils/logger.js'
 
 const router = express.Router()
 
+const AI_ERROR_RESPONSE = {
+  success: false,
+  error: 'AIサービスでエラーが発生しました',
+  code: 'AI_ERROR',
+}
+
 // OpenAI機能が無効の場合のミドルウェア
 const checkOpenAI = (req, res, next) => {
   if (!isOpenAIAvailable()) {
     return res.status(503).json({
-      error: 'OpenAI機能は現在利用できません。OPENAI_API_KEYを設定してください。'
+      success: false,
+      error: 'OpenAI機能は現在利用できません。OPENAI_API_KEYを設定してください。',
+      code: 'AI_UNAVAILABLE',
     })
   }
   next()
@@ -31,7 +39,7 @@ router.post('/chat/completions', async (req, res) => {
     res.status(response.status).json(data)
   } catch (error) {
     console.error('ChatGPT API Error:', error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json(AI_ERROR_RESPONSE)
   }
 })
 
@@ -47,7 +55,7 @@ router.post('/vector_stores', async (req, res) => {
     res.status(response.status).json(data)
   } catch (error) {
     console.error('Vector Store作成エラー:', error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json(AI_ERROR_RESPONSE)
   }
 })
 
@@ -73,7 +81,7 @@ router.post('/files', async (req, res) => {
     }
   } catch (error) {
     appendLog(`❌ ファイルアップロードエラー: ${error.message}`)
-    res.status(500).json({ error: error.message })
+    res.status(500).json(AI_ERROR_RESPONSE)
   }
 })
 
@@ -90,7 +98,7 @@ router.post('/vector_stores/:vectorStoreId/files', async (req, res) => {
     res.status(response.status).json(data)
   } catch (error) {
     console.error('Vector StoreへのFile追加エラー:', error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json(AI_ERROR_RESPONSE)
   }
 })
 
@@ -106,7 +114,7 @@ router.post('/assistants', async (req, res) => {
     res.status(response.status).json(data)
   } catch (error) {
     console.error('Assistant作成エラー:', error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json(AI_ERROR_RESPONSE)
   }
 })
 
@@ -122,7 +130,7 @@ router.post('/threads', async (req, res) => {
     res.status(response.status).json(data)
   } catch (error) {
     console.error('Thread作成エラー:', error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json(AI_ERROR_RESPONSE)
   }
 })
 
@@ -139,7 +147,7 @@ router.post('/threads/:threadId/messages', async (req, res) => {
     res.status(response.status).json(data)
   } catch (error) {
     console.error('Message追加エラー:', error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json(AI_ERROR_RESPONSE)
   }
 })
 
@@ -156,7 +164,7 @@ router.post('/threads/:threadId/runs', async (req, res) => {
     res.status(response.status).json(data)
   } catch (error) {
     console.error('Run実行エラー:', error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json(AI_ERROR_RESPONSE)
   }
 })
 
@@ -172,7 +180,7 @@ router.get('/threads/:threadId/runs/:runId', async (req, res) => {
     res.status(response.status).json(data)
   } catch (error) {
     console.error('Run状態取得エラー:', error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json(AI_ERROR_RESPONSE)
   }
 })
 
@@ -188,7 +196,7 @@ router.get('/threads/:threadId/messages', async (req, res) => {
     res.status(response.status).json(data)
   } catch (error) {
     console.error('Message一覧取得エラー:', error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json(AI_ERROR_RESPONSE)
   }
 })
 
@@ -204,7 +212,7 @@ router.get('/files/:fileId/content', async (req, res) => {
     res.status(response.status).send(content)
   } catch (error) {
     console.error('Fileダウンロードエラー:', error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json(AI_ERROR_RESPONSE)
   }
 })
 
