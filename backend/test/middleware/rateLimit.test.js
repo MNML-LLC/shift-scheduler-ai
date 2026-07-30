@@ -34,7 +34,7 @@ describe('rate limit middleware', () => {
     expect(blocked.status).toBe(429)
     expect(blocked.body).toEqual({
       success: false,
-      error: 'Too many requests, please try again later.'
+      error: 'リクエストが多すぎます。しばらく待ってから再度お試しください。'
     })
   })
 
@@ -51,7 +51,7 @@ describe('rate limit middleware', () => {
     expect(blocked.status).toBe(429)
     expect(blocked.body).toEqual({
       success: false,
-      error: 'Too many requests, please try again later.'
+      error: 'リクエストが多すぎます。しばらく待ってから再度お試しください。'
     })
   })
 

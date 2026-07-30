@@ -8,6 +8,7 @@ import ShiftGenerationService from '../services/shift/ShiftGenerationService.js'
 import ConstraintValidationService from '../services/shift/ConstraintValidationService.js';
 import { calculateWorkHours, formatDateToYYYYMMDD } from '../utils/timeUtils.js';
 import { notifyShiftGenerationError } from '../utils/slackNotifier.js';
+import { MESSAGES } from '../constants/messages.js';
 
 const router = express.Router();
 
@@ -223,7 +224,7 @@ router.get('/monthly-comments', async (req, res, next) => {
     if (!tenant_id || !year || !month) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id、年、月は必須です',
+        error: MESSAGES.VALIDATION.TENANT_YEAR_MONTH_REQUIRED,
       });
     }
 
@@ -290,7 +291,7 @@ router.get('/submissions', async (req, res, next) => {
     if (!tenant_id || !year || !month) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id、年、月は必須です',
+        error: MESSAGES.VALIDATION.TENANT_YEAR_MONTH_REQUIRED,
       });
     }
 
@@ -446,7 +447,7 @@ router.get('/summary', async (req, res, next) => {
     if (!year) {
       return res.status(400).json({
         success: false,
-        error: '年を指定してください'
+        error: MESSAGES.VALIDATION.YEAR_REQUIRED
       });
     }
 
@@ -687,7 +688,7 @@ router.post('/plans/generate', async (req, res, next) => {
     if (!tenant_id || !store_id || !year || !month) {
       return res.status(400).json({
         success: false,
-        error: '必須項目が入力されていません',
+        error: MESSAGES.VALIDATION.MISSING_FIELDS,
         required: ['tenant_id', 'store_id', 'year', 'month']
       });
     }
@@ -696,14 +697,14 @@ router.post('/plans/generate', async (req, res, next) => {
     if (year < 2000 || year > 2100) {
       return res.status(400).json({
         success: false,
-        error: '年は2000〜2100の範囲で指定してください'
+        error: MESSAGES.VALIDATION.INVALID_YEAR_RANGE
       });
     }
 
     if (month < 1 || month > 12) {
       return res.status(400).json({
         success: false,
-        error: '月は1〜12の範囲で指定してください'
+        error: MESSAGES.VALIDATION.INVALID_MONTH_RANGE
       });
     }
 
@@ -715,7 +716,7 @@ router.post('/plans/generate', async (req, res, next) => {
     if (year < currentYear || (year === currentYear && month < currentMonth)) {
       return res.status(400).json({
         success: false,
-        error: '過去の月のシフトは変更できません',
+        error: MESSAGES.VALIDATION.PAST_MONTH,
         message: `${year}年${month}月は過去の月のため、シフトを作成・更新できません。`
       });
     }
@@ -971,7 +972,7 @@ router.post('/plans/generate', async (req, res, next) => {
     if (error.code === '23503') {
       return res.status(400).json({
         success: false,
-        error: '参照エラー: 存在しない外部キーが含まれています',
+        error: MESSAGES.VALIDATION.INVALID_REFERENCE,
         detail: error.detail
       });
     }
@@ -980,7 +981,7 @@ router.post('/plans/generate', async (req, res, next) => {
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        error: '指定した年月のシフト計画は既に存在します',
+        error: MESSAGES.CONFLICT.SHIFT_PLAN_EXISTS,
         detail: error.detail
       });
     }
@@ -1020,7 +1021,7 @@ router.post('/plans/generate-ai', async (req, res, next) => {
     if (!tenant_id || !store_id || !year || !month) {
       return res.status(400).json({
         success: false,
-        error: '必須項目が入力されていません',
+        error: MESSAGES.VALIDATION.MISSING_FIELDS,
         required: ['tenant_id', 'store_id', 'year', 'month']
       });
     }
@@ -1029,14 +1030,14 @@ router.post('/plans/generate-ai', async (req, res, next) => {
     if (year < 2000 || year > 2100) {
       return res.status(400).json({
         success: false,
-        error: '年は2000〜2100の範囲で指定してください'
+        error: MESSAGES.VALIDATION.INVALID_YEAR_RANGE
       });
     }
 
     if (month < 1 || month > 12) {
       return res.status(400).json({
         success: false,
-        error: '月は1〜12の範囲で指定してください'
+        error: MESSAGES.VALIDATION.INVALID_MONTH_RANGE
       });
     }
 
@@ -1048,7 +1049,7 @@ router.post('/plans/generate-ai', async (req, res, next) => {
     if (year < currentYear || (year === currentYear && month < currentMonth)) {
       return res.status(400).json({
         success: false,
-        error: '過去の月のシフトは作成できません',
+        error: MESSAGES.VALIDATION.PAST_MONTH_CREATE,
         message: `${year}年${month}月は過去の月のため、シフトを作成できません。`
       });
     }
@@ -1216,7 +1217,7 @@ router.post('/plans/approve-first', async (req, res, next) => {
     if (!plan_id) {
       return res.status(400).json({
         success: false,
-        error: 'plan_id は必須です'
+        error: MESSAGES.VALIDATION.PLAN_ID_REQUIRED
       });
     }
 
@@ -1230,8 +1231,8 @@ router.post('/plans/approve-first', async (req, res, next) => {
     if (planCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'シフト計画が見つかりません',
-        message: 'シフト計画が見つかりません'
+        error: MESSAGES.NOT_FOUND.SHIFT_PLAN_NOT_FOUND,
+        message: MESSAGES.NOT_FOUND.SHIFT_PLAN_NOT_FOUND
       });
     }
 
@@ -1267,7 +1268,7 @@ router.post('/plans/approve-first', async (req, res, next) => {
 
     res.json({
       success: true,
-      message: '第1案を承認しました',
+      message: MESSAGES.SUCCESS.FIRST_PLAN_APPROVED,
       data: {
         plan_id: plan_id,
         status: 'APPROVED'
@@ -1479,8 +1480,8 @@ router.post('/plans/approve-second', async (req, res, next) => {
     if (firstPlanCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '第1案が見つかりません',
-        message: '第1案が見つかりません'
+        error: MESSAGES.NOT_FOUND.FIRST_PLAN_NOT_FOUND,
+        message: MESSAGES.NOT_FOUND.FIRST_PLAN_NOT_FOUND
       });
     }
 
@@ -1541,7 +1542,7 @@ router.post('/plans/approve-second', async (req, res, next) => {
       );
 
       if (staffResult.rows.length === 0) {
-        console.warn(`Staff not found: ${shift.name}`);
+        console.warn(MESSAGES.LOG.STAFF_NOT_FOUND(shift.name));
         continue;
       }
 
@@ -1651,7 +1652,7 @@ router.get('/plans/:id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'シフト計画が見つかりません'
+        error: MESSAGES.NOT_FOUND.SHIFT_PLAN_NOT_FOUND
       });
     }
 
@@ -1808,7 +1809,7 @@ router.get('/preferences/:id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'シフト希望が見つかりません'
+        error: MESSAGES.NOT_FOUND.SHIFT_PREFERENCE_NOT_FOUND
       });
     }
 
@@ -1859,7 +1860,7 @@ router.post('/preferences', async (req, res, next) => {
     if (!tenant_id || !store_id || !staff_id || !preference_date) {
       return res.status(400).json({
         success: false,
-        error: '必須項目が入力されていません',
+        error: MESSAGES.VALIDATION.MISSING_FIELDS,
         required: ['tenant_id', 'store_id', 'staff_id', 'preference_date']
       });
     }
@@ -1869,7 +1870,7 @@ router.post('/preferences', async (req, res, next) => {
     if (!dateRegex.test(preference_date)) {
       return res.status(400).json({
         success: false,
-        error: 'preference_date の形式が不正です（YYYY-MM-DD 形式で指定してください）'
+        error: MESSAGES.VALIDATION.INVALID_PREFERENCE_DATE
       });
     }
 
@@ -1878,13 +1879,13 @@ router.post('/preferences', async (req, res, next) => {
     if (start_time && !timeRegex.test(start_time)) {
       return res.status(400).json({
         success: false,
-        error: 'start_time の形式が不正です（HH:MM 形式で指定してください）'
+        error: MESSAGES.VALIDATION.INVALID_START_TIME
       });
     }
     if (end_time && !timeRegex.test(end_time)) {
       return res.status(400).json({
         success: false,
-        error: 'end_time の形式が不正です（HH:MM 形式で指定してください）'
+        error: MESSAGES.VALIDATION.INVALID_END_TIME
       });
     }
 
@@ -1930,7 +1931,7 @@ router.post('/preferences', async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'シフト希望を登録しました',
+      message: MESSAGES.SUCCESS.SHIFT_PREFERENCE_CREATED,
       data: detailResult.rows[0]
     });
   } catch (error) {
@@ -1941,7 +1942,7 @@ router.post('/preferences', async (req, res, next) => {
     if (error.code === '23503') {
       return res.status(400).json({
         success: false,
-        error: '参照エラー: 存在しない外部キーが含まれています',
+        error: MESSAGES.VALIDATION.INVALID_REFERENCE,
         detail: error.detail
       });
     }
@@ -1950,7 +1951,7 @@ router.post('/preferences', async (req, res, next) => {
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        error: '指定したスタッフ・日付のシフト希望は既に存在します',
+        error: MESSAGES.CONFLICT.SHIFT_PREFERENCE_EXISTS,
         detail: error.detail
       });
     }
@@ -1985,7 +1986,7 @@ router.put('/preferences/:id', async (req, res, next) => {
     if (!tenant_id) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
@@ -1998,7 +1999,7 @@ router.put('/preferences/:id', async (req, res, next) => {
     if (existingResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'シフト希望が見つかりません'
+        error: MESSAGES.NOT_FOUND.SHIFT_PREFERENCE_NOT_FOUND
       });
     }
 
@@ -2023,13 +2024,13 @@ router.put('/preferences/:id', async (req, res, next) => {
     if (newStartTime && !timeRegex.test(newStartTime)) {
       return res.status(400).json({
         success: false,
-        error: 'start_time の形式が不正です（HH:MM 形式で指定してください）'
+        error: MESSAGES.VALIDATION.INVALID_START_TIME
       });
     }
     if (newEndTime && !timeRegex.test(newEndTime)) {
       return res.status(400).json({
         success: false,
-        error: 'end_time の形式が不正です（HH:MM 形式で指定してください）'
+        error: MESSAGES.VALIDATION.INVALID_END_TIME
       });
     }
 
@@ -2077,7 +2078,7 @@ router.put('/preferences/:id', async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'シフト希望を更新しました',
+      message: MESSAGES.SUCCESS.SHIFT_PREFERENCE_UPDATED,
       data: detailResult.rows[0]
     });
   } catch (error) {
@@ -2127,7 +2128,7 @@ router.post('/preferences/bulk', async (req, res, next) => {
     if (!tenant_id || !store_id || !staff_id || !preferences || !Array.isArray(preferences)) {
       return res.status(400).json({
         success: false,
-        error: '必須項目が入力されていません',
+        error: MESSAGES.VALIDATION.MISSING_FIELDS,
         required: ['tenant_id', 'store_id', 'staff_id', 'preferences (array)']
       });
     }
@@ -2154,19 +2155,19 @@ router.post('/preferences/bulk', async (req, res, next) => {
       if (!dateRegex.test(pref.preference_date)) {
         return res.status(400).json({
           success: false,
-          error: `Invalid preference_date format: ${pref.preference_date}. Must be YYYY-MM-DD`
+          error: `preference_date の形式が不正です: ${pref.preference_date}（YYYY-MM-DD 形式で指定してください）`
         });
       }
       if (pref.start_time && !timeRegex.test(pref.start_time)) {
         return res.status(400).json({
           success: false,
-          error: `Invalid start_time format: ${pref.start_time}. Must be HH:MM`
+          error: `start_time の形式が不正です: ${pref.start_time}（HH:MM 形式で指定してください）`
         });
       }
       if (pref.end_time && !timeRegex.test(pref.end_time)) {
         return res.status(400).json({
           success: false,
-          error: `Invalid end_time format: ${pref.end_time}. Must be HH:MM`
+          error: `end_time の形式が不正です: ${pref.end_time}（HH:MM 形式で指定してください）`
         });
       }
     }
@@ -2232,7 +2233,7 @@ router.post('/preferences/bulk', async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: '一括処理が完了しました',
+      message: MESSAGES.SUCCESS.BULK_OPERATION_COMPLETED,
       deleted: result.deletedCount,
       inserted: result.insertedIds.length,
       inserted_ids: result.insertedIds
@@ -2263,7 +2264,7 @@ router.delete('/preferences/:id', async (req, res, next) => {
     if (!tenant_id) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
@@ -2276,7 +2277,7 @@ router.delete('/preferences/:id', async (req, res, next) => {
     if (existingResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'シフト希望が見つかりません'
+        error: MESSAGES.NOT_FOUND.SHIFT_PREFERENCE_NOT_FOUND
       });
     }
 
@@ -2290,7 +2291,7 @@ router.delete('/preferences/:id', async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'シフト希望を削除しました',
+      message: MESSAGES.SUCCESS.SHIFT_PREFERENCE_DELETED,
       deleted_preference_id: parseInt(id),
       deleted_preference_info: {
         staff_id: deletedPref.staff_id,
@@ -2344,7 +2345,7 @@ router.get('/:id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'シフトが見つかりません'
+        error: MESSAGES.NOT_FOUND.SHIFT_NOT_FOUND
       });
     }
 
@@ -2410,7 +2411,7 @@ router.post('/', async (req, res, next) => {
         !pattern_id || !start_time || !end_time || break_minutes === undefined) {
       return res.status(400).json({
         success: false,
-        error: '必須項目が入力されていません',
+        error: MESSAGES.VALIDATION.MISSING_FIELDS,
         required: ['tenant_id', 'store_id', 'plan_id', 'staff_id', 'shift_date',
                    'pattern_id', 'start_time', 'end_time', 'break_minutes']
       });
@@ -2450,7 +2451,7 @@ router.post('/', async (req, res, next) => {
       if (workHours < 0) {
         return res.status(400).json({
           success: false,
-          error: '時刻範囲が不正です: 休憩時間が勤務時間を超えています'
+          error: MESSAGES.VALIDATION.INVALID_BREAK_TIME_RANGE
         });
       }
 
@@ -2515,7 +2516,7 @@ router.post('/', async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'シフトを作成しました',
+      message: MESSAGES.SUCCESS.SHIFT_CREATED,
       data: detailResult.rows[0]
     });
   } catch (error) {
@@ -2526,7 +2527,7 @@ router.post('/', async (req, res, next) => {
     if (error.code === '23503') {
       return res.status(400).json({
         success: false,
-        error: '参照エラー: 存在しない外部キーが含まれています',
+        error: MESSAGES.VALIDATION.INVALID_REFERENCE,
         detail: error.detail
       });
     }
@@ -2569,7 +2570,7 @@ router.put('/:id', async (req, res, next) => {
     if (!tenant_id) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
@@ -2582,7 +2583,7 @@ router.put('/:id', async (req, res, next) => {
     if (existingResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'シフトが見つかりません'
+        error: MESSAGES.NOT_FOUND.SHIFT_NOT_FOUND
       });
     }
 
@@ -2663,7 +2664,7 @@ router.put('/:id', async (req, res, next) => {
         if (workHours < 0) {
           return res.status(400).json({
             success: false,
-            error: '時刻範囲が不正です: 休憩時間が勤務時間を超えています'
+            error: MESSAGES.VALIDATION.INVALID_BREAK_TIME_RANGE
           });
         }
 
@@ -2799,7 +2800,7 @@ router.put('/:id', async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'シフトを更新しました',
+      message: MESSAGES.SUCCESS.SHIFT_UPDATED,
       data: detailResult.rows[0]
     });
   } catch (error) {
@@ -2810,7 +2811,7 @@ router.put('/:id', async (req, res, next) => {
     if (error.code === '23503') {
       return res.status(400).json({
         success: false,
-        error: '参照エラー: 存在しない外部キーが含まれています',
+        error: MESSAGES.VALIDATION.INVALID_REFERENCE,
         detail: error.detail
       });
     }
@@ -2837,7 +2838,7 @@ router.delete('/:id', async (req, res, next) => {
     if (!tenant_id) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
@@ -2850,7 +2851,7 @@ router.delete('/:id', async (req, res, next) => {
     if (existingResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'シフトが見つかりません'
+        error: MESSAGES.NOT_FOUND.SHIFT_NOT_FOUND
       });
     }
 
@@ -2864,7 +2865,7 @@ router.delete('/:id', async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'シフトを削除しました',
+      message: MESSAGES.SUCCESS.SHIFT_DELETED,
       deleted_shift_id: parseInt(id),
       deleted_shift_info: {
         staff_id: deletedShift.staff_id,
@@ -2901,7 +2902,7 @@ router.delete('/plans/:plan_id', async (req, res, next) => {
     if (!plan_id) {
       return res.status(400).json({
         success: false,
-        error: 'plan_id は必須です'
+        error: MESSAGES.VALIDATION.PLAN_ID_REQUIRED
       });
     }
 
@@ -2920,8 +2921,8 @@ router.delete('/plans/:plan_id', async (req, res, next) => {
         await query('ROLLBACK');
         return res.status(404).json({
           success: false,
-          error: 'シフト計画が見つかりません',
-          message: 'シフト計画が見つかりません'
+          error: MESSAGES.NOT_FOUND.SHIFT_PLAN_NOT_FOUND,
+          message: MESSAGES.NOT_FOUND.SHIFT_PLAN_NOT_FOUND
         });
       }
 
@@ -2939,7 +2940,7 @@ router.delete('/plans/:plan_id', async (req, res, next) => {
         await query('ROLLBACK');
         return res.status(403).json({
           success: false,
-          error: '過去の月のシフト計画は削除できません',
+          error: MESSAGES.VALIDATION.PAST_MONTH_DELETE,
           message: `${plan.plan_year}年${plan.plan_month}月は過去月のため削除できません`
         });
       }
@@ -3001,14 +3002,14 @@ router.put('/plans/:plan_id/status', async (req, res, next) => {
     if (!plan_id) {
       return res.status(400).json({
         success: false,
-        error: 'plan_id は必須です'
+        error: MESSAGES.VALIDATION.PLAN_ID_REQUIRED
       });
     }
 
     if (!status) {
       return res.status(400).json({
         success: false,
-        error: 'status は必須です'
+        error: MESSAGES.VALIDATION.STATUS_REQUIRED
       });
     }
 
@@ -3031,8 +3032,8 @@ router.put('/plans/:plan_id/status', async (req, res, next) => {
     if (planCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'シフト計画が見つかりません',
-        message: 'シフト計画が見つかりません'
+        error: MESSAGES.NOT_FOUND.SHIFT_PLAN_NOT_FOUND,
+        message: MESSAGES.NOT_FOUND.SHIFT_PLAN_NOT_FOUND
       });
     }
 

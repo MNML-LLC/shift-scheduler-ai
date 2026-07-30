@@ -1,5 +1,6 @@
 import express from 'express'
 import db, { DatabaseUnavailableError } from '../config/database.js'
+import { MESSAGES } from '../constants/messages.js'
 
 const router = express.Router()
 
@@ -58,7 +59,7 @@ router.get('/:tenant_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'テナントが見つかりません',
+        error: MESSAGES.NOT_FOUND.TENANT_NOT_FOUND,
       })
     }
 

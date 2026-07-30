@@ -57,11 +57,11 @@ app.use((err, req, res, next) => {
   if (err instanceof DatabaseUnavailableError) {
     console.error('Database unavailable after retries:', err.cause)
     return res.status(503).json({
-      error: 'Service temporarily unavailable. Please retry.'
+      error: 'サービスを一時的に利用できません。しばらく待ってから再度お試しください。'
     })
   }
   console.error('Unhandled error:', err)
-  res.status(500).json({ error: 'Internal server error' })
+  res.status(500).json({ error: 'サーバー内部エラーが発生しました' })
 })
 
 // Server startup

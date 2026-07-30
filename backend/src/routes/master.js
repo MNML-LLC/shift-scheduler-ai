@@ -1,5 +1,6 @@
 import express from 'express';
 import { query, DatabaseUnavailableError } from '../config/database.js';
+import { MESSAGES } from '../constants/messages.js';
 
 const router = express.Router();
 

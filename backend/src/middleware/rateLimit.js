@@ -26,7 +26,7 @@ function createLimiter(limit) {
     legacyHeaders: false,
     message: {
       success: false,
-      error: 'Too many requests, please try again later.'
+      error: 'リクエストが多すぎます。しばらく待ってから再度お試しください。'
     }
   })
 }

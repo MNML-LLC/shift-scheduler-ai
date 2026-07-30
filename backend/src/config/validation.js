@@ -20,12 +20,12 @@ export const VALIDATION_RULES = {
  * バリデーションエラーメッセージ
  */
 export const VALIDATION_MESSAGES = {
-  INVALID_MAX_HOURS: 'max_hours_per_week must be >= 0',
-  INVALID_BREAK_MINUTES: 'break_minutes must be >= 0',
-  INVALID_TENANT_ID: 'tenant_id is required',
-  INVALID_STORE_ID: 'store_id is required',
-  INVALID_STAFF_ID: 'staff_id is required',
-  INVALID_STATUS: 'Invalid status value',
+  INVALID_MAX_HOURS: 'max_hours_per_week は 0 以上で指定してください',
+  INVALID_BREAK_MINUTES: 'break_minutes は 0 以上で指定してください',
+  INVALID_TENANT_ID: 'tenant_id は必須です',
+  INVALID_STORE_ID: 'store_id は必須です',
+  INVALID_STAFF_ID: 'staff_id は必須です',
+  INVALID_STATUS: 'status の値が不正です',
 };
 
 export default VALIDATION_RULES;
