@@ -9,13 +9,22 @@ router.post('/save-csv', async (req, res) => {
     const { filename, content } = req.body
 
     if (!filename || !content) {
-      return res.status(400).json({ error: 'filename and content are required' })
+      return res.status(400).json({
+        success: false,
+        error: 'ファイル名とコンテンツは必須です',
+        code: 'VALIDATION_ERROR',
+      })
     }
 
     const result = await saveCSV(filename, content)
     res.json(result)
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    console.error('CSV保存エラー:', error)
+    res.status(500).json({
+      success: false,
+      error: 'ファイル処理でエラーが発生しました',
+      code: 'CSV_ERROR',
+    })
   }
 })
 
@@ -25,19 +34,24 @@ router.get('/load-csv', async (req, res) => {
     const { path } = req.query
 
     if (!path) {
-      return res.status(400).json({ error: 'path parameter is required' })
+      return res.status(400).json({
+        success: false,
+        error: 'パスパラメータは必須です',
+        code: 'VALIDATION_ERROR',
+      })
     }
 
     const data = loadCSV(path)
     res.json({
       success: true,
-      data: data
+      data: data,
     })
   } catch (error) {
     console.error('CSV読み込みエラー:', error)
     res.status(500).json({
       success: false,
-      error: error.message
+      error: 'ファイル処理でエラーが発生しました',
+      code: 'CSV_ERROR',
     })
   }
 })
