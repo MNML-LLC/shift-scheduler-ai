@@ -921,7 +921,7 @@ router.post('/roles', async (req, res, next) => {
     if (!tenant_id || !role_code || !role_name) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id, role_code, role_name are required'
+        error: 'テナントID、役職コード、役職名は必須です'
       });
     }
 
@@ -955,7 +955,7 @@ router.put('/roles/:role_id', async (req, res, next) => {
     if (!role_code || !role_name) {
       return res.status(400).json({
         success: false,
-        error: 'role_code and role_name are required'
+        error: '役職コードと役職名は必須です'
       });
     }
 
@@ -969,7 +969,7 @@ router.put('/roles/:role_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Role not found'
+        error: 'ロールが見つかりません'
       });
     }
 
@@ -1002,7 +1002,7 @@ router.delete('/roles/:role_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Role not found'
+        error: 'ロールが見つかりません'
       });
     }
 
@@ -1033,7 +1033,7 @@ router.post('/stores', async (req, res, next) => {
     if (!tenant_id || !store_code || !store_name || !division_id) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id, store_code, store_name, division_id are required'
+        error: 'テナントID、店舗コード、店舗名、部門IDは必須です'
       });
     }
 
@@ -1078,7 +1078,7 @@ router.put('/stores/:store_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Store not found'
+        error: '店舗が見つかりません'
       });
     }
 
@@ -1111,7 +1111,7 @@ router.delete('/stores/:store_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Store not found'
+        error: '店舗が見つかりません'
       });
     }
 
@@ -1141,7 +1141,7 @@ router.post('/skills', async (req, res, next) => {
     if (!tenant_id || !skill_code || !skill_name) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id, skill_code, skill_name are required'
+        error: 'テナントID、スキルコード、スキル名は必須です'
       });
     }
 
@@ -1174,7 +1174,7 @@ router.put('/skills/:skill_id', async (req, res, next) => {
     if (!skill_code || !skill_name) {
       return res.status(400).json({
         success: false,
-        error: 'skill_code and skill_name are required'
+        error: 'スキルコードとスキル名は必須です'
       });
     }
 
@@ -1188,7 +1188,7 @@ router.put('/skills/:skill_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Skill not found'
+        error: 'スキルが見つかりません'
       });
     }
 
@@ -1221,7 +1221,7 @@ router.delete('/skills/:skill_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Skill not found'
+        error: 'スキルが見つかりません'
       });
     }
 
@@ -1251,7 +1251,7 @@ router.post('/employment-types', async (req, res, next) => {
     if (!tenant_id || !employment_type_code || !employment_type_name) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id, employment_type_code, employment_type_name are required'
+        error: 'テナントID、雇用形態コード、雇用形態名は必須です'
       });
     }
 
@@ -1284,7 +1284,7 @@ router.put('/employment-types/:employment_type_id', async (req, res, next) => {
     if (!employment_type_code || !employment_type_name) {
       return res.status(400).json({
         success: false,
-        error: 'employment_type_code and employment_type_name are required'
+        error: '雇用形態コードと雇用形態名は必須です'
       });
     }
 
@@ -1298,7 +1298,7 @@ router.put('/employment-types/:employment_type_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Employment type not found'
+        error: '雇用形態が見つかりません'
       });
     }
 
@@ -1331,7 +1331,7 @@ router.delete('/employment-types/:employment_type_id', async (req, res, next) =>
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Employment type not found'
+        error: '雇用形態が見つかりません'
       });
     }
 
@@ -1361,7 +1361,7 @@ router.post('/shift-patterns', async (req, res, next) => {
     if (!tenant_id || !pattern_code || !pattern_name || !start_time || !end_time) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id, pattern_code, pattern_name, start_time, end_time are required'
+        error: 'テナントID、パターンコード、パターン名、開始時刻、終了時刻は必須です'
       });
     }
 
@@ -1394,7 +1394,7 @@ router.put('/shift-patterns/:pattern_id', async (req, res, next) => {
     if (!pattern_code || !pattern_name || !start_time || !end_time) {
       return res.status(400).json({
         success: false,
-        error: 'pattern_code, pattern_name, start_time, end_time are required'
+        error: 'パターンコード、パターン名、開始時刻、終了時刻は必須です'
       });
     }
 
@@ -1408,7 +1408,7 @@ router.put('/shift-patterns/:pattern_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Shift pattern not found'
+        error: 'シフトパターンが見つかりません'
       });
     }
 
@@ -1441,7 +1441,7 @@ router.delete('/shift-patterns/:pattern_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Shift pattern not found'
+        error: 'シフトパターンが見つかりません'
       });
     }
 
@@ -1560,7 +1560,7 @@ router.put('/divisions/:division_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Division not found'
+        error: '部門が見つかりません'
       });
     }
 
@@ -1593,7 +1593,7 @@ router.delete('/divisions/:division_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Division not found'
+        error: '部門が見つかりません'
       });
     }
 
@@ -1712,7 +1712,7 @@ router.put('/commute-allowance/:allowance_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Commute allowance not found'
+        error: '通勤手当が見つかりません'
       });
     }
 
@@ -1745,7 +1745,7 @@ router.delete('/commute-allowance/:allowance_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Commute allowance not found'
+        error: '通勤手当が見つかりません'
       });
     }
 
@@ -1864,7 +1864,7 @@ router.put('/insurance-rates/:rate_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Insurance rate not found'
+        error: '保険料率が見つかりません'
       });
     }
 
@@ -1897,7 +1897,7 @@ router.delete('/insurance-rates/:rate_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Insurance rate not found'
+        error: '保険料率が見つかりません'
       });
     }
 
@@ -2028,7 +2028,7 @@ router.put('/tax-brackets/:bracket_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Tax bracket not found'
+        error: '税額区分が見つかりません'
       });
     }
 
@@ -2061,7 +2061,7 @@ router.delete('/tax-brackets/:bracket_id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Tax bracket not found'
+        error: '税額区分が見つかりません'
       });
     }
 

@@ -28,7 +28,7 @@ describe('GET /api/analytics/sales-actual', () => {
     const response = await request(app).get('/api/analytics/sales-actual')
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -36,7 +36,7 @@ describe('GET /api/analytics/sales-actual', () => {
     const response = await request(app).get('/api/analytics/sales-actual?tenant_id=')
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -64,7 +64,7 @@ describe('GET /api/analytics/sales-forecast', () => {
     const response = await request(app).get('/api/analytics/sales-forecast')
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -72,7 +72,7 @@ describe('GET /api/analytics/sales-forecast', () => {
     const response = await request(app).get('/api/analytics/sales-forecast?tenant_id=')
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -100,7 +100,7 @@ describe('GET /api/analytics/dashboard-metrics', () => {
     const response = await request(app).get('/api/analytics/dashboard-metrics')
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -108,7 +108,7 @@ describe('GET /api/analytics/dashboard-metrics', () => {
     const response = await request(app).get('/api/analytics/dashboard-metrics?tenant_id=')
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -138,7 +138,7 @@ describe('POST /api/analytics/work-hours', () => {
       .send({ data: [{ staff_id: 1, shift_date: '2026-07-01' }] })
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -148,7 +148,7 @@ describe('POST /api/analytics/work-hours', () => {
       .send({ tenant_id: '', data: [{ staff_id: 1, shift_date: '2026-07-01' }] })
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -189,7 +189,7 @@ describe('POST /api/analytics/payroll', () => {
       .send({ data: [{ staff_id: 1 }] })
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -199,7 +199,7 @@ describe('POST /api/analytics/payroll', () => {
       .send({ tenant_id: '', data: [{ staff_id: 1 }] })
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -244,7 +244,7 @@ describe('POST /api/analytics/sales-actual', () => {
       .send({ data: [{ year: 2026, month: 7 }] })
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -254,7 +254,7 @@ describe('POST /api/analytics/sales-actual', () => {
       .send({ tenant_id: '', data: [{ year: 2026, month: 7 }] })
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -295,7 +295,7 @@ describe('POST /api/analytics/sales-forecast', () => {
       .send({ data: [{ year: 2026, month: 7 }] })
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -305,7 +305,7 @@ describe('POST /api/analytics/sales-forecast', () => {
       .send({ tenant_id: '', data: [{ year: 2026, month: 7 }] })
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 

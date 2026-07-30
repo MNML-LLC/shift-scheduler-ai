@@ -22,7 +22,7 @@ describe('GET /api/analytics/payroll', () => {
     const response = await request(app).get('/api/analytics/payroll')
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 
@@ -30,7 +30,7 @@ describe('GET /api/analytics/payroll', () => {
     const response = await request(app).get('/api/analytics/payroll?tenant_id=')
 
     expect(response.status).toBe(400)
-    expect(response.body.error).toBe('tenant_id is required')
+    expect(response.body.error).toBe('tenant_id は必須です')
     expect(query).not.toHaveBeenCalled()
   })
 

@@ -223,7 +223,7 @@ router.get('/monthly-comments', async (req, res, next) => {
     if (!tenant_id || !year || !month) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id, year, month are required',
+        error: 'tenant_id、年、月は必須です',
       });
     }
 
@@ -290,7 +290,7 @@ router.get('/submissions', async (req, res, next) => {
     if (!tenant_id || !year || !month) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id, year, month are required',
+        error: 'tenant_id、年、月は必須です',
       });
     }
 
@@ -446,7 +446,7 @@ router.get('/summary', async (req, res, next) => {
     if (!year) {
       return res.status(400).json({
         success: false,
-        error: 'Year parameter is required'
+        error: '年を指定してください'
       });
     }
 
@@ -687,7 +687,7 @@ router.post('/plans/generate', async (req, res, next) => {
     if (!tenant_id || !store_id || !year || !month) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields',
+        error: '必須項目が入力されていません',
         required: ['tenant_id', 'store_id', 'year', 'month']
       });
     }
@@ -696,14 +696,14 @@ router.post('/plans/generate', async (req, res, next) => {
     if (year < 2000 || year > 2100) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid year: must be between 2000 and 2100'
+        error: '年は2000〜2100の範囲で指定してください'
       });
     }
 
     if (month < 1 || month > 12) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid month: must be between 1 and 12'
+        error: '月は1〜12の範囲で指定してください'
       });
     }
 
@@ -715,7 +715,7 @@ router.post('/plans/generate', async (req, res, next) => {
     if (year < currentYear || (year === currentYear && month < currentMonth)) {
       return res.status(400).json({
         success: false,
-        error: 'Cannot create or update shifts for past months',
+        error: '過去の月のシフトは変更できません',
         message: `${year}年${month}月は過去の月のため、シフトを作成・更新できません。`
       });
     }
@@ -757,7 +757,7 @@ router.post('/plans/generate', async (req, res, next) => {
     if (sourcePlans.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'No SECOND plan found for previous month',
+        error: '前月の第2案が見つかりません',
         message: `${prevYear}年${prevMonth}月の第2案（確定版）が存在しません。第2案を作成・承認してからコピーしてください。`
       });
     }
@@ -971,7 +971,7 @@ router.post('/plans/generate', async (req, res, next) => {
     if (error.code === '23503') {
       return res.status(400).json({
         success: false,
-        error: 'Invalid reference: one or more foreign keys do not exist',
+        error: '参照エラー: 存在しない外部キーが含まれています',
         detail: error.detail
       });
     }
@@ -980,7 +980,7 @@ router.post('/plans/generate', async (req, res, next) => {
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        error: 'Shift plan already exists for this year and month',
+        error: '指定した年月のシフト計画は既に存在します',
         detail: error.detail
       });
     }
@@ -1020,7 +1020,7 @@ router.post('/plans/generate-ai', async (req, res, next) => {
     if (!tenant_id || !store_id || !year || !month) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields',
+        error: '必須項目が入力されていません',
         required: ['tenant_id', 'store_id', 'year', 'month']
       });
     }
@@ -1029,14 +1029,14 @@ router.post('/plans/generate-ai', async (req, res, next) => {
     if (year < 2000 || year > 2100) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid year: must be between 2000 and 2100'
+        error: '年は2000〜2100の範囲で指定してください'
       });
     }
 
     if (month < 1 || month > 12) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid month: must be between 1 and 12'
+        error: '月は1〜12の範囲で指定してください'
       });
     }
 
@@ -1048,7 +1048,7 @@ router.post('/plans/generate-ai', async (req, res, next) => {
     if (year < currentYear || (year === currentYear && month < currentMonth)) {
       return res.status(400).json({
         success: false,
-        error: 'Cannot create shifts for past months',
+        error: '過去の月のシフトは作成できません',
         message: `${year}年${month}月は過去の月のため、シフトを作成できません。`
       });
     }
@@ -1216,7 +1216,7 @@ router.post('/plans/approve-first', async (req, res, next) => {
     if (!plan_id) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required parameter: plan_id'
+        error: 'plan_id は必須です'
       });
     }
 
@@ -1230,7 +1230,7 @@ router.post('/plans/approve-first', async (req, res, next) => {
     if (planCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Plan not found',
+        error: 'シフト計画が見つかりません',
         message: 'シフト計画が見つかりません'
       });
     }
@@ -1465,7 +1465,7 @@ router.post('/plans/approve-second', async (req, res, next) => {
     if (!firstPlanId || !year || !month || !shifts || !Array.isArray(shifts)) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required parameters: plan_id, year, month, shifts'
+        error: 'plan_id、年、月、shifts は必須です'
       });
     }
 
@@ -1479,7 +1479,7 @@ router.post('/plans/approve-second', async (req, res, next) => {
     if (firstPlanCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'First plan not found',
+        error: '第1案が見つかりません',
         message: '第1案が見つかりません'
       });
     }
@@ -1651,7 +1651,7 @@ router.get('/plans/:id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Shift plan not found'
+        error: 'シフト計画が見つかりません'
       });
     }
 
@@ -1808,7 +1808,7 @@ router.get('/preferences/:id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Shift preference not found'
+        error: 'シフト希望が見つかりません'
       });
     }
 
@@ -1859,7 +1859,7 @@ router.post('/preferences', async (req, res, next) => {
     if (!tenant_id || !store_id || !staff_id || !preference_date) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields',
+        error: '必須項目が入力されていません',
         required: ['tenant_id', 'store_id', 'staff_id', 'preference_date']
       });
     }
@@ -1869,7 +1869,7 @@ router.post('/preferences', async (req, res, next) => {
     if (!dateRegex.test(preference_date)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid preference_date format: must be YYYY-MM-DD'
+        error: 'preference_date の形式が不正です（YYYY-MM-DD 形式で指定してください）'
       });
     }
 
@@ -1878,13 +1878,13 @@ router.post('/preferences', async (req, res, next) => {
     if (start_time && !timeRegex.test(start_time)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid start_time format: must be HH:MM'
+        error: 'start_time の形式が不正です（HH:MM 形式で指定してください）'
       });
     }
     if (end_time && !timeRegex.test(end_time)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid end_time format: must be HH:MM'
+        error: 'end_time の形式が不正です（HH:MM 形式で指定してください）'
       });
     }
 
@@ -1930,7 +1930,7 @@ router.post('/preferences', async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Shift preference created successfully',
+      message: 'シフト希望を登録しました',
       data: detailResult.rows[0]
     });
   } catch (error) {
@@ -1941,7 +1941,7 @@ router.post('/preferences', async (req, res, next) => {
     if (error.code === '23503') {
       return res.status(400).json({
         success: false,
-        error: 'Invalid reference: one or more foreign keys do not exist',
+        error: '参照エラー: 存在しない外部キーが含まれています',
         detail: error.detail
       });
     }
@@ -1950,7 +1950,7 @@ router.post('/preferences', async (req, res, next) => {
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        error: 'Shift preference already exists for this staff and date',
+        error: '指定したスタッフ・日付のシフト希望は既に存在します',
         detail: error.detail
       });
     }
@@ -1985,7 +1985,7 @@ router.put('/preferences/:id', async (req, res, next) => {
     if (!tenant_id) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required in query parameters'
+        error: 'tenant_id は必須です'
       });
     }
 
@@ -1998,7 +1998,7 @@ router.put('/preferences/:id', async (req, res, next) => {
     if (existingResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Shift preference not found'
+        error: 'シフト希望が見つかりません'
       });
     }
 
@@ -2023,13 +2023,13 @@ router.put('/preferences/:id', async (req, res, next) => {
     if (newStartTime && !timeRegex.test(newStartTime)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid start_time format: must be HH:MM'
+        error: 'start_time の形式が不正です（HH:MM 形式で指定してください）'
       });
     }
     if (newEndTime && !timeRegex.test(newEndTime)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid end_time format: must be HH:MM'
+        error: 'end_time の形式が不正です（HH:MM 形式で指定してください）'
       });
     }
 
@@ -2077,7 +2077,7 @@ router.put('/preferences/:id', async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Shift preference updated successfully',
+      message: 'シフト希望を更新しました',
       data: detailResult.rows[0]
     });
   } catch (error) {
@@ -2127,7 +2127,7 @@ router.post('/preferences/bulk', async (req, res, next) => {
     if (!tenant_id || !store_id || !staff_id || !preferences || !Array.isArray(preferences)) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields',
+        error: '必須項目が入力されていません',
         required: ['tenant_id', 'store_id', 'staff_id', 'preferences (array)']
       });
     }
@@ -2136,7 +2136,7 @@ router.post('/preferences/bulk', async (req, res, next) => {
     if (preferences.length === 0 && (!requestYear || !requestMonth)) {
       return res.status(400).json({
         success: false,
-        error: 'year and month are required when preferences is empty'
+        error: 'preferences が空の場合は年月が必須です'
       });
     }
 
@@ -2148,7 +2148,7 @@ router.post('/preferences/bulk', async (req, res, next) => {
       if (!pref.preference_date) {
         return res.status(400).json({
           success: false,
-          error: 'Each preference must have preference_date'
+          error: '各シフト希望に preference_date が必要です'
         });
       }
       if (!dateRegex.test(pref.preference_date)) {
@@ -2232,7 +2232,7 @@ router.post('/preferences/bulk', async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Bulk operation completed',
+      message: '一括処理が完了しました',
       deleted: result.deletedCount,
       inserted: result.insertedIds.length,
       inserted_ids: result.insertedIds
@@ -2263,7 +2263,7 @@ router.delete('/preferences/:id', async (req, res, next) => {
     if (!tenant_id) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required in query parameters'
+        error: 'tenant_id は必須です'
       });
     }
 
@@ -2276,7 +2276,7 @@ router.delete('/preferences/:id', async (req, res, next) => {
     if (existingResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Shift preference not found'
+        error: 'シフト希望が見つかりません'
       });
     }
 
@@ -2290,7 +2290,7 @@ router.delete('/preferences/:id', async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Shift preference deleted successfully',
+      message: 'シフト希望を削除しました',
       deleted_preference_id: parseInt(id),
       deleted_preference_info: {
         staff_id: deletedPref.staff_id,
@@ -2344,7 +2344,7 @@ router.get('/:id', async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Shift not found'
+        error: 'シフトが見つかりません'
       });
     }
 
@@ -2410,7 +2410,7 @@ router.post('/', async (req, res, next) => {
         !pattern_id || !start_time || !end_time || break_minutes === undefined) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields',
+        error: '必須項目が入力されていません',
         required: ['tenant_id', 'store_id', 'plan_id', 'staff_id', 'shift_date',
                    'pattern_id', 'start_time', 'end_time', 'break_minutes']
       });
@@ -2450,7 +2450,7 @@ router.post('/', async (req, res, next) => {
       if (workHours < 0) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid time range: break_minutes exceeds work hours'
+          error: '時刻範囲が不正です: 休憩時間が勤務時間を超えています'
         });
       }
 
@@ -2515,7 +2515,7 @@ router.post('/', async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Shift created successfully',
+      message: 'シフトを作成しました',
       data: detailResult.rows[0]
     });
   } catch (error) {
@@ -2526,7 +2526,7 @@ router.post('/', async (req, res, next) => {
     if (error.code === '23503') {
       return res.status(400).json({
         success: false,
-        error: 'Invalid reference: one or more foreign keys do not exist',
+        error: '参照エラー: 存在しない外部キーが含まれています',
         detail: error.detail
       });
     }
@@ -2569,7 +2569,7 @@ router.put('/:id', async (req, res, next) => {
     if (!tenant_id) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required in query parameters'
+        error: 'tenant_id は必須です'
       });
     }
 
@@ -2582,7 +2582,7 @@ router.put('/:id', async (req, res, next) => {
     if (existingResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Shift not found'
+        error: 'シフトが見つかりません'
       });
     }
 
@@ -2663,7 +2663,7 @@ router.put('/:id', async (req, res, next) => {
         if (workHours < 0) {
           return res.status(400).json({
             success: false,
-            error: 'Invalid time range: break_minutes exceeds work hours'
+            error: '時刻範囲が不正です: 休憩時間が勤務時間を超えています'
           });
         }
 
@@ -2799,7 +2799,7 @@ router.put('/:id', async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Shift updated successfully',
+      message: 'シフトを更新しました',
       data: detailResult.rows[0]
     });
   } catch (error) {
@@ -2810,7 +2810,7 @@ router.put('/:id', async (req, res, next) => {
     if (error.code === '23503') {
       return res.status(400).json({
         success: false,
-        error: 'Invalid reference: one or more foreign keys do not exist',
+        error: '参照エラー: 存在しない外部キーが含まれています',
         detail: error.detail
       });
     }
@@ -2837,7 +2837,7 @@ router.delete('/:id', async (req, res, next) => {
     if (!tenant_id) {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id is required in query parameters'
+        error: 'tenant_id は必須です'
       });
     }
 
@@ -2850,7 +2850,7 @@ router.delete('/:id', async (req, res, next) => {
     if (existingResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Shift not found'
+        error: 'シフトが見つかりません'
       });
     }
 
@@ -2864,7 +2864,7 @@ router.delete('/:id', async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Shift deleted successfully',
+      message: 'シフトを削除しました',
       deleted_shift_id: parseInt(id),
       deleted_shift_info: {
         staff_id: deletedShift.staff_id,
@@ -2901,7 +2901,7 @@ router.delete('/plans/:plan_id', async (req, res, next) => {
     if (!plan_id) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required parameter: plan_id'
+        error: 'plan_id は必須です'
       });
     }
 
@@ -2920,7 +2920,7 @@ router.delete('/plans/:plan_id', async (req, res, next) => {
         await query('ROLLBACK');
         return res.status(404).json({
           success: false,
-          error: 'Plan not found',
+          error: 'シフト計画が見つかりません',
           message: 'シフト計画が見つかりません'
         });
       }
@@ -2939,7 +2939,7 @@ router.delete('/plans/:plan_id', async (req, res, next) => {
         await query('ROLLBACK');
         return res.status(403).json({
           success: false,
-          error: 'Cannot delete past month plan',
+          error: '過去の月のシフト計画は削除できません',
           message: `${plan.plan_year}年${plan.plan_month}月は過去月のため削除できません`
         });
       }
@@ -3001,14 +3001,14 @@ router.put('/plans/:plan_id/status', async (req, res, next) => {
     if (!plan_id) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required parameter: plan_id'
+        error: 'plan_id は必須です'
       });
     }
 
     if (!status) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required parameter: status'
+        error: 'status は必須です'
       });
     }
 
@@ -3031,7 +3031,7 @@ router.put('/plans/:plan_id/status', async (req, res, next) => {
     if (planCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Plan not found',
+        error: 'シフト計画が見つかりません',
         message: 'シフト計画が見つかりません'
       });
     }
