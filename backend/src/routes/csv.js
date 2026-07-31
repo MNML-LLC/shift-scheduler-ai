@@ -1,5 +1,6 @@
 import express from 'express'
 import { saveCSV, loadCSV } from '../services/fileService.js'
+import { MESSAGES } from '../constants/messages.js'
 
 const router = express.Router()
 
@@ -11,7 +12,7 @@ router.post('/save-csv', async (req, res) => {
     if (!filename || !content) {
       return res.status(400).json({
         success: false,
-        error: 'ファイル名とコンテンツは必須です',
+        error: MESSAGES.VALIDATION.FILENAME_CONTENT_REQUIRED,
         code: 'VALIDATION_ERROR',
       })
     }
@@ -36,7 +37,7 @@ router.get('/load-csv', async (req, res) => {
     if (!path) {
       return res.status(400).json({
         success: false,
-        error: 'パスパラメータは必須です',
+        error: MESSAGES.VALIDATION.PATH_REQUIRED,
         code: 'VALIDATION_ERROR',
       })
     }

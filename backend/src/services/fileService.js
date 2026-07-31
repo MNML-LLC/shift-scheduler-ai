@@ -28,7 +28,7 @@ export async function saveCSV(filename, content) {
 
   return {
     success: true,
-    message: 'File saved successfully',
+    message: 'ファイルを保存しました',
     filepath: `/data/generated/${filename}`
   }
 }

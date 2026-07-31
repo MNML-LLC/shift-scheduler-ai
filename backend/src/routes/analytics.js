@@ -1,5 +1,6 @@
 import express from 'express';
 import { query, DatabaseUnavailableError } from '../config/database.js';
+import { MESSAGES } from '../constants/messages.js';
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.get('/payroll', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
@@ -105,7 +106,7 @@ router.get('/sales-actual', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
@@ -175,7 +176,7 @@ router.get('/sales-forecast', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
@@ -246,7 +247,7 @@ router.get('/dashboard-metrics', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
@@ -310,14 +311,14 @@ router.post('/work-hours', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
     if (!data || !Array.isArray(data) || data.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'データが指定されていません'
+        error: MESSAGES.VALIDATION.DATA_REQUIRED
       });
     }
 
@@ -407,14 +408,14 @@ router.post('/payroll', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
     if (!data || !Array.isArray(data) || data.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'データが指定されていません'
+        error: MESSAGES.VALIDATION.DATA_REQUIRED
       });
     }
 
@@ -515,14 +516,14 @@ router.post('/sales-actual', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
     if (!data || !Array.isArray(data) || data.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'データが指定されていません'
+        error: MESSAGES.VALIDATION.DATA_REQUIRED
       });
     }
 
@@ -613,14 +614,14 @@ router.post('/sales-forecast', async (req, res, next) => {
     if (tenant_id === undefined || tenant_id === '') {
       return res.status(400).json({
         success: false,
-        error: 'tenant_id は必須です'
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
       });
     }
 
     if (!data || !Array.isArray(data) || data.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'データが指定されていません'
+        error: MESSAGES.VALIDATION.DATA_REQUIRED
       });
     }
 

@@ -16,13 +16,13 @@ export const corsOptions = {
       callback(null, true)
       return
     }
-    callback(new Error('Not allowed by CORS'))
+    callback(new Error('CORS_NOT_ALLOWED'))
   },
 }
 
 export function corsErrorHandler(err, req, res, next) {
-  if (err && err.message === 'Not allowed by CORS') {
-    res.status(403).json({ error: 'Not allowed by CORS' })
+  if (err && err.message === 'CORS_NOT_ALLOWED') {
+    res.status(403).json({ error: 'CORS ポリシーにより許可されていないオリジンです' })
     return
   }
   next(err)

@@ -42,10 +42,10 @@ describe('ルート経由での DatabaseUnavailableError → 503 変換', () => 
     app.use((err, req, res, next) => {
       if (err instanceof DatabaseUnavailableError) {
         return res.status(503).json({
-          error: 'Service temporarily unavailable. Please retry.'
+          error: 'サービスを一時的に利用できません。しばらく待ってから再度お試しください。'
         })
       }
-      res.status(500).json({ error: 'Internal server error' })
+      res.status(500).json({ error: 'サーバー内部エラーが発生しました' })
     })
   })
 
@@ -59,7 +59,7 @@ describe('ルート経由での DatabaseUnavailableError → 503 変換', () => 
 
     expect(response.status).toBe(503)
     expect(response.body).toEqual({
-      error: 'Service temporarily unavailable. Please retry.'
+      error: 'サービスを一時的に利用できません。しばらく待ってから再度お試しください。'
     })
   }, 15000)
 

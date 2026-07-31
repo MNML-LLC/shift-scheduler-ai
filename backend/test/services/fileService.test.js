@@ -39,7 +39,7 @@ describe('fileService', () => {
       const result = await saveCSV(filename, content)
 
       expect(result.success).toBe(true)
-      expect(result.message).toBe('File saved successfully')
+      expect(result.message).toBe('ファイルを保存しました')
       expect(result.filepath).toContain(filename)
     })
 
