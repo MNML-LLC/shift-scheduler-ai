@@ -20,6 +20,7 @@ import TimeInput from '../../shared/TimeInput'
 import { ShiftRepository } from '../../../infrastructure/repositories/ShiftRepository'
 import { MasterRepository } from '../../../infrastructure/repositories/MasterRepository'
 import { useShiftPlanEditor } from '../../../hooks/useShiftPlanEditor'
+import { useIsMobile } from '../../../hooks/use-mobile'
 import { getCurrentTenantId } from '../../../config/tenant'
 
 const shiftRepository = new ShiftRepository()
@@ -56,6 +57,8 @@ const FirstPlanEditor = ({
   onStatusChange, // 保存後の状態更新コールバック
   mode = 'edit', // 'view' or 'edit'
 }) => {
+  const isMobile = useIsMobile()
+
   // 共通フックを使用
   const editor = useShiftPlanEditor({
     planType: 'FIRST',
@@ -1093,7 +1096,7 @@ const FirstPlanEditor = ({
         exit="out"
         variants={pageVariants}
         transition={pageTransition}
-        className="h-screen overflow-hidden flex flex-col px-4 py-8"
+        className={`h-screen flex flex-col px-4 py-8 ${isMobile ? 'overflow-auto' : 'overflow-hidden'}`}
       >
         <div className="flex flex-col items-center justify-center min-h-[400px]">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
@@ -1110,7 +1113,7 @@ const FirstPlanEditor = ({
       exit="out"
       variants={pageVariants}
       transition={pageTransition}
-      className="h-screen flex flex-col pt-16 overflow-hidden"
+      className={`h-screen flex flex-col pt-16 ${isMobile ? 'overflow-auto' : 'overflow-hidden'}`}
     >
       {/* ヘッダー */}
       <div className="mb-2 flex items-center justify-between flex-shrink-0 px-8 py-4 bg-white border-b border-gray-200">

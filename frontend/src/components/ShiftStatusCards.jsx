@@ -332,7 +332,7 @@ const ShiftStatusCards = ({
   onSecondPlanClick,
 }) => {
   return (
-    <div className="grid grid-cols-3 gap-5 max-w-5xl w-full">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 max-w-5xl w-full">
       <RecruitmentCard recruitmentStatus={recruitmentStatus} onClick={onRecruitmentClick} />
       <FirstPlanCard firstPlanStatus={firstPlanStatus} onClick={onFirstPlanClick} />
       <SecondPlanCard secondPlanStatus={secondPlanStatus} onClick={onSecondPlanClick} />
