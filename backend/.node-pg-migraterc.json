@@ -2,7 +2,6 @@
   "migrations-dir": "../scripts/database/migrations",
   "migrations-table": "pgmigrations",
   "migration-file-language": "js",
-  "database-url-var": "DATABASE_URL",
   "check-order": true,
   "verbose": true
 }
