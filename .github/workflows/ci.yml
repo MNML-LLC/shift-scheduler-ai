@@ -73,3 +73,36 @@ jobs:
 
       - name: Syntax check
         run: cd backend && node --check src/server.js
+
+  db-migration-check:
+    name: DB Migration Check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: shift_scheduler_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/shift_scheduler_ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+      - name: Apply all migrations (up)
+        run: cd backend && npm run db:migrate:up
+      - name: Detect pending migrations (dry-run)
+        run: cd backend && npm run db:migrate:status
