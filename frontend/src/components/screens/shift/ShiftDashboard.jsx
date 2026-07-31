@@ -9,8 +9,10 @@
 
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Menu } from 'lucide-react'
 import { useTargetMonth } from '../../../hooks/useTargetMonth'
 import { useShiftStatus } from '../../../hooks/useShiftStatus'
+import { useIsMobile } from '../../../hooks/use-mobile'
 import { BACKEND_API_URL } from '../../../config/api'
 import { ShiftRepository } from '../../../infrastructure/repositories/ShiftRepository'
 import Sidebar from '../../Sidebar'
@@ -36,6 +38,8 @@ const ShiftDashboard = ({ onStaffManagement }) => {
   const navigate = useNavigate()
   const location = useLocation()
   const { targetMonth } = useTargetMonth()
+  const isMobile = useIsMobile()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // 遷移元からの年月情報を取得（ある場合はそれを使用）
   const stateYear = location.state?.year
@@ -212,28 +216,78 @@ const ShiftDashboard = ({ onStaffManagement }) => {
     }
   }
 
+  const handleMobileMonthSelect = (year, month) => {
+    handleMonthSelect(year, month)
+    setSidebarOpen(false)
+  }
+
+  const handleMobileStaffManagement = () => {
+    setSidebarOpen(false)
+    handleStaffManagement()
+  }
+
+  const handleMobileMasterManagement = () => {
+    setSidebarOpen(false)
+    navigate('/master')
+  }
+
   return (
     <div className="flex h-screen">
-      {/* サイドバー */}
-      <Sidebar
-        selectedYear={selectedYear}
-        selectedMonth={selectedMonth}
-        onMonthSelect={handleMonthSelect}
-        onStaffManagement={handleStaffManagement}
-        onMasterManagement={() => navigate('/master')}
-        currentPath="/"
-      />
+      {/* サイドバー（デスクトップ: 常時表示 / モバイル: ドロワー） */}
+      {!isMobile && (
+        <Sidebar
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
+          onMonthSelect={handleMonthSelect}
+          onStaffManagement={handleStaffManagement}
+          onMasterManagement={() => navigate('/master')}
+          currentPath="/"
+        />
+      )}
+      {isMobile && sidebarOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="w-72 max-w-[80vw] shadow-xl flex-shrink-0">
+            <Sidebar
+              selectedYear={selectedYear}
+              selectedMonth={selectedMonth}
+              onMonthSelect={handleMobileMonthSelect}
+              onStaffManagement={handleMobileStaffManagement}
+              onMasterManagement={handleMobileMasterManagement}
+              currentPath="/"
+            />
+          </div>
+          <div
+            className="flex-1 bg-black/50"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="サイドバーを閉じる"
+          />
+        </div>
+      )}
 
       {/* メインコンテンツ */}
       <main className="flex-1 flex flex-col bg-slate-50 overflow-hidden">
+        {/* モバイル用トップバー */}
+        {isMobile && (
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-white">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded hover:bg-slate-100"
+              aria-label="メニューを開く"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="font-medium text-sm">シフト管理</span>
+          </div>
+        )}
+
         {/* ヘッダー */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4">
-          <div className="flex items-center justify-between">
+        <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">
+              <h1 className="text-lg md:text-2xl font-bold text-slate-900">
                 {selectedYear}年{selectedMonth}月 シフト管理
               </h1>
-              <p className="text-slate-600 text-sm">対象月のシフト作成・管理</p>
+              <p className="text-slate-600 text-xs md:text-sm">対象月のシフト作成・管理</p>
             </div>
             {/* 環境表示 */}
             <div
@@ -266,7 +320,7 @@ const ShiftDashboard = ({ onStaffManagement }) => {
         </header>
 
         {/* カードエリア */}
-        <div className="flex-1 p-6 overflow-auto flex items-center justify-center">
+        <div className="flex-1 p-4 md:p-6 overflow-auto flex items-center justify-center">
           {loading ? (
             <Spinner />
           ) : (
