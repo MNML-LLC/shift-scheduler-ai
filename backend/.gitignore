@@ -32,11 +32,14 @@ db.sqlite3-journal
 /staticfiles
 
 # Environment variables (モダンな管理方式)
-# .env.example → コミット可（デフォルト値・テンプレート）
-# .env, .env.local → コミット不可（シークレット）
+# .env.example / .env.staging.example → コミット可（ダミー値・テンプレート）
+# .env, .env.*（.env.local / .env.staging.local など）→ コミット不可（シークレット）
+# `.env.*` を一括で無視することで新しい派生ファイル（.env.production.local 等）を
+# 追加する際に .gitignore の更新漏れによる流出を構造的に防ぐ。
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.staging.example
 
 # IDE
 .vscode/
