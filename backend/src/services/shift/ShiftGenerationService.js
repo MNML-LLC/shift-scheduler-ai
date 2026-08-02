@@ -1,6 +1,7 @@
 import MasterDataCollectorService from './MasterDataCollectorService.js'
 import PromptBuilderService from './PromptBuilderService.js'
 import OpenAIClientService from './OpenAIClientService.js'
+import AnthropicClientService from './AnthropicClientService.js'
 import ResponseParserService from './ResponseParserService.js'
 import ConstraintValidationService from './ConstraintValidationService.js'
 
@@ -12,7 +13,11 @@ class ShiftGenerationService {
   constructor() {
     this.dataCollector = new MasterDataCollectorService()
     this.promptBuilder = new PromptBuilderService()
-    this.aiClient = new OpenAIClientService()
+    const provider = (process.env.SHIFT_AI_PROVIDER || 'openai').toLowerCase()
+    this.provider = provider
+    this.aiClient = provider === 'anthropic'
+      ? new AnthropicClientService()
+      : new OpenAIClientService()
     this.responseParser = new ResponseParserService()
     this.constraintValidator = new ConstraintValidationService()
   }
@@ -45,7 +50,10 @@ class ShiftGenerationService {
       const prompt = this.promptBuilder.buildPrompt(masterData)
 
       // フェーズ3: AI生成
-      const model = options.model || process.env.OPENAI_MODEL || 'gpt-4o'
+      const defaultModel = this.provider === 'anthropic'
+        ? (process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6')
+        : (process.env.OPENAI_MODEL || 'gpt-4o')
+      const model = options.model || defaultModel
       const aiResponse = await this.aiClient.generateShifts(prompt, {
         maxRetries: options.maxRetries || 3,
         temperature: options.temperature || 0.7,
