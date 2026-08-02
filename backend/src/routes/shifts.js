@@ -1015,7 +1015,7 @@ router.post('/plans/generate', async (req, res, next) => {
  *   event: complete   data: {"success":true,"planId":123,"message":"..."}
  *   event: error      data: {"success":false,"error":"..."}
  */
-router.get('/plans/generate-ai/stream', async (req, res, next) => {
+router.get('/plans/generate-ai/stream', async (req, res) => {
   // SSE ヘッダーを送信
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
@@ -1053,7 +1053,7 @@ router.get('/plans/generate-ai/stream', async (req, res, next) => {
     if (req.query.options) {
       try {
         options = JSON.parse(req.query.options)
-      } catch (parseErr) {
+      } catch {
         sendEvent('error', {
           success: false,
           error: 'options パラメータの JSON パースに失敗しました'
@@ -1241,7 +1241,7 @@ router.get('/plans/generate-ai/stream', async (req, res, next) => {
         error: 'データベースに接続できません'
       })
       closeStream()
-      return next(error)
+      return
     }
 
     console.error('[API] AI自動生成 (SSE) エラー:', error)
