@@ -28,7 +28,8 @@ class AnthropicClientService {
     const {
       maxRetries = 3,
       model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
-      maxTokens = 8096
+      maxTokens = 16000,
+      temperature = 0.7
     } = options
 
     if (!anthropic) {
@@ -44,16 +45,26 @@ class AnthropicClientService {
         const response = await anthropic.messages.create({
           model,
           max_tokens: maxTokens,
+          temperature,
           system,
-          messages: [{ role: 'user', content: prompt.user }]
+          messages: [
+            { role: 'user', content: prompt.user },
+            { role: 'assistant', content: '{' }
+          ]
         })
+
+        if (response.stop_reason === 'max_tokens') {
+          throw new Error(
+            `AI応答がトークン上限（${maxTokens}）に達しました。シフト規模を縮小するか ANTHROPIC_MODEL をより大きなモデルに変更してください`
+          )
+        }
 
         const textBlock = response.content.find((block) => block.type === 'text')
         if (!textBlock || typeof textBlock.text !== 'string') {
           throw new Error('Anthropic応答にテキストブロックが含まれていません')
         }
 
-        return textBlock.text
+        return '{' + textBlock.text
 
       } catch (error) {
         console.error(`[AnthropicClient] エラー (試行 ${attempt}/${maxRetries}):`, error.message)
