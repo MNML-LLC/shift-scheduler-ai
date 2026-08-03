@@ -996,6 +996,279 @@ router.post('/plans/generate', async (req, res, next) => {
 });
 
 /**
+ * AIシフト自動生成 (SSE 進捗ストリーム版)
+ * GET /api/shifts/plans/generate-ai/stream
+ *
+ * Server-Sent Events (SSE) で各フェーズの進捗をリアルタイム通知する。
+ * リクエストボディが使えないため、パラメータはクエリ文字列で渡す。
+ *
+ * Query Parameters:
+ *   tenant_id: number (required)
+ *   store_id: number (required)
+ *   year: number (required)
+ *   month: number (required)
+ *   created_by: number (optional)
+ *   options: JSON string (optional) — { model, temperature, maxRetries }
+ *
+ * SSE Events:
+ *   event: progress   data: {"phase":"collecting","message":"...","progress":10}
+ *   event: complete   data: {"success":true,"planId":123,"message":"..."}
+ *   event: error      data: {"success":false,"error":"..."}
+ */
+router.get('/plans/generate-ai/stream', async (req, res) => {
+  // SSE ヘッダーを送信
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no')
+  if (typeof res.flushHeaders === 'function') {
+    res.flushHeaders()
+  }
+
+  const sendEvent = (event, data) => {
+    if (res.writableEnded) return
+    res.write(`event: ${event}\n`)
+    res.write(`data: ${JSON.stringify(data)}\n\n`)
+  }
+
+  const closeStream = () => {
+    if (!res.writableEnded) {
+      res.end()
+    }
+  }
+
+  let clientClosed = false
+  req.on('close', () => {
+    clientClosed = true
+  })
+
+  try {
+    const tenant_id = parseInt(req.query.tenant_id, 10)
+    const store_id = parseInt(req.query.store_id, 10)
+    const year = parseInt(req.query.year, 10)
+    const month = parseInt(req.query.month, 10)
+    const created_by = req.query.created_by ? parseInt(req.query.created_by, 10) : null
+
+    let options = {}
+    if (req.query.options) {
+      try {
+        options = JSON.parse(req.query.options)
+      } catch {
+        sendEvent('error', {
+          success: false,
+          error: 'options パラメータの JSON パースに失敗しました'
+        })
+        closeStream()
+        return
+      }
+    }
+
+    // 必須項目のバリデーション
+    if (!tenant_id || !store_id || !year || !month) {
+      sendEvent('error', {
+        success: false,
+        error: MESSAGES.VALIDATION.MISSING_FIELDS,
+        required: ['tenant_id', 'store_id', 'year', 'month']
+      })
+      closeStream()
+      return
+    }
+
+    if (year < 2000 || year > 2100) {
+      sendEvent('error', {
+        success: false,
+        error: MESSAGES.VALIDATION.INVALID_YEAR_RANGE
+      })
+      closeStream()
+      return
+    }
+
+    if (month < 1 || month > 12) {
+      sendEvent('error', {
+        success: false,
+        error: MESSAGES.VALIDATION.INVALID_MONTH_RANGE
+      })
+      closeStream()
+      return
+    }
+
+    // 過去月チェック
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() + 1
+    if (year < currentYear || (year === currentYear && month < currentMonth)) {
+      sendEvent('error', {
+        success: false,
+        error: MESSAGES.VALIDATION.PAST_MONTH_CREATE,
+        message: `${year}年${month}月は過去の月のため、シフトを作成できません。`
+      })
+      closeStream()
+      return
+    }
+
+    // AI シフト生成 (progress コールバック付き)
+    const generationService = new ShiftGenerationService()
+    const genOptions = {
+      ...options,
+      onProgress: (payload) => {
+        if (clientClosed) return
+        sendEvent('progress', payload)
+      }
+    }
+
+    const result = await generationService.generateShifts(
+      tenant_id,
+      store_id,
+      year,
+      month,
+      genOptions
+    )
+
+    if (clientClosed) {
+      closeStream()
+      return
+    }
+
+    // DB 書き込み (POST /plans/generate-ai と同じロジック)
+    sendEvent('progress', { phase: 'saving', message: 'DBに保存中...', progress: 95 })
+    await query('BEGIN')
+
+    let planId
+    let isUpdate = false
+    let insertedCount = 0
+    try {
+      const existingPlan = await query(
+        `SELECT plan_id, status FROM ops.shift_plans
+         WHERE tenant_id = $1 AND store_id = $2 AND plan_year = $3 AND plan_month = $4
+         FOR UPDATE`,
+        [tenant_id, store_id, year, month]
+      )
+
+      if (existingPlan.rows.length > 0) {
+        planId = existingPlan.rows[0].plan_id
+        isUpdate = true
+        await query('DELETE FROM ops.shifts WHERE plan_id = $1', [planId])
+      } else {
+        const periodStart = new Date(year, month - 1, 1)
+        const periodEnd = new Date(year, month, 0)
+        const planCode = `PLAN-${year}${String(month).padStart(2, '0')}-AI`
+        const planName = `${year}年${month}月シフト（AI生成）`
+
+        const planResult = await query(
+          `INSERT INTO ops.shift_plans (
+            tenant_id, store_id, plan_year, plan_month,
+            plan_code, plan_name, period_start, period_end,
+            status, generation_type, ai_model_version, created_by
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'DRAFT', 'AI_GENERATED', $9, $10)
+          RETURNING plan_id`,
+          [
+            tenant_id, store_id, year, month,
+            planCode, planName, periodStart, periodEnd,
+            options.model || process.env.OPENAI_MODEL || 'gpt-4o',
+            created_by || null
+          ]
+        )
+        planId = planResult.rows[0].plan_id
+      }
+
+      for (const shift of result.shifts) {
+        await query(
+          `INSERT INTO ops.shifts (
+            tenant_id, store_id, plan_id, staff_id, shift_date, pattern_id,
+            start_time, end_time, break_minutes, total_hours, labor_cost,
+            is_preferred, is_modified, notes
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, false, 'AI自動生成')`,
+          [
+            tenant_id, store_id, planId, shift.staff_id, shift.shift_date, shift.pattern_id,
+            shift.start_time, shift.end_time, shift.break_minutes,
+            null, null
+          ]
+        )
+        insertedCount++
+      }
+
+      const summaryResult = await query(
+        `SELECT
+           COUNT(*) as shift_count,
+           SUM(total_hours) as total_hours,
+           SUM(labor_cost) as total_cost
+         FROM ops.shifts
+         WHERE plan_id = $1`,
+        [planId]
+      )
+      const summary = summaryResult.rows[0]
+
+      await query(
+        `UPDATE ops.shift_plans
+         SET total_labor_hours = $1, total_labor_cost = $2, constraint_violations = $3
+         WHERE plan_id = $4`,
+        [
+          parseFloat(summary.total_hours || 0),
+          parseInt(summary.total_cost || 0),
+          result.validation.violations.length,
+          planId
+        ]
+      )
+
+      await query('COMMIT')
+    } catch (dbError) {
+      await query('ROLLBACK')
+      throw dbError
+    }
+
+    sendEvent('progress', { phase: 'done', message: '生成完了', progress: 100 })
+    sendEvent('complete', {
+      success: true,
+      message: isUpdate
+        ? `AI自動生成でシフトを更新しました (${insertedCount}件)`
+        : `AI自動生成でシフトを作成しました (${insertedCount}件)`,
+      is_update: isUpdate,
+      data: {
+        plan_id: planId,
+        year,
+        month,
+        shifts_count: insertedCount,
+        validation: result.validation.summary,
+        violations: result.validation.violations,
+        metadata: result.metadata
+      }
+    })
+    closeStream()
+  } catch (error) {
+    if (error instanceof DatabaseUnavailableError) {
+      sendEvent('error', {
+        success: false,
+        error: 'データベースに接続できません'
+      })
+      closeStream()
+      return
+    }
+
+    console.error('[API] AI自動生成 (SSE) エラー:', error)
+    await notifyShiftGenerationError(
+      'GET /api/shifts/plans/generate-ai/stream',
+      error,
+      req.query
+    )
+
+    if (error && error.success === false) {
+      sendEvent('error', {
+        success: false,
+        error: error.error,
+        phase: error.phase,
+        elapsed_ms: error.elapsed_ms
+      })
+    } else {
+      sendEvent('error', {
+        success: false,
+        error: (error && error.message) || 'AI自動生成中にエラーが発生しました'
+      })
+    }
+    closeStream()
+  }
+})
+
+/**
  * AIシフト自動生成
  * POST /api/shifts/plans/generate-ai
  *

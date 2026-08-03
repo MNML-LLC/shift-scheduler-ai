@@ -27,6 +27,7 @@ import { Rnd } from 'react-rnd'
 import MultiStoreShiftTable from '../../shared/MultiStoreShiftTable'
 import ShiftTableView from '../../shared/ShiftTableView'
 import TimeInput from '../../shared/TimeInput'
+import AIShiftGenerator from './AIShiftGenerator'
 import { ShiftRepository } from '../../../infrastructure/repositories/ShiftRepository'
 import { MasterRepository } from '../../../infrastructure/repositories/MasterRepository'
 import { getCurrentTenantId } from '../../../config/tenant'
@@ -1559,6 +1560,26 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
 
           {isEditMode && (
             <>
+              {/* AI シフト生成（SSE 進捗ストリーム） */}
+              {(() => {
+                const selectedStoreIds = Array.from(selectedStores)
+                const aiStoreId = selectedStoreIds.length > 0 ? selectedStoreIds[0] : null
+                if (!aiStoreId) return null
+                return (
+                  <AIShiftGenerator
+                    tenantId={getCurrentTenantId()}
+                    storeId={aiStoreId}
+                    year={year}
+                    month={month}
+                    onComplete={() => {
+                      loadShiftData()
+                    }}
+                    onError={err => {
+                      console.error('AI シフト生成エラー:', err)
+                    }}
+                  />
+                )
+              })()}
               {/* Issue #165: 時間重複エラー表示 */}
               {timeOverlapInfo.hasOverlap && (
                 <div className="relative group flex items-center text-red-600 text-sm mr-2 cursor-help">

@@ -33,9 +33,19 @@ class ShiftGenerationService {
    */
   async generateShifts(tenantId, storeId, year, month, options = {}) {
     const startTime = Date.now()
+    const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null
+    const notify = (payload) => {
+      if (!onProgress) return
+      try {
+        onProgress(payload)
+      } catch (err) {
+        console.warn('[ShiftGeneration] onProgress コールバックでエラー:', err)
+      }
+    }
 
     try {
       // フェーズ1: マスターデータ収集
+      notify({ phase: 'collecting', message: 'マスターデータを収集中...', progress: 10 })
       const masterData = await this.dataCollector.collectMasterData(
         tenantId,
         storeId,
@@ -47,9 +57,11 @@ class ShiftGenerationService {
       this.validateMasterData(masterData)
 
       // フェーズ2: プロンプト生成
+      notify({ phase: 'prompting', message: 'プロンプトを生成中...', progress: 30 })
       const prompt = this.promptBuilder.buildPrompt(masterData)
 
       // フェーズ3: AI生成
+      notify({ phase: 'generating', message: 'AIがシフトを生成中...', progress: 50 })
       const defaultModel = this.provider === 'anthropic'
         ? (process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6')
         : (process.env.OPENAI_MODEL || 'gpt-4o')
@@ -61,9 +73,11 @@ class ShiftGenerationService {
       })
 
       // フェーズ4: 応答パース
+      notify({ phase: 'parsing', message: '応答を解析中...', progress: 75 })
       const parsed = await this.responseParser.parseAndValidate(aiResponse, masterData)
 
       // フェーズ5: 制約検証
+      notify({ phase: 'validating', message: '制約を検証中...', progress: 90 })
       const validation = await this.constraintValidator.validateShifts(
         parsed.shifts,
         masterData
