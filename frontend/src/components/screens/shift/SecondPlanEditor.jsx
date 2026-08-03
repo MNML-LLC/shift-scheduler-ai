@@ -21,6 +21,7 @@ import {
   Wand2,
   Settings,
   ChevronDown,
+  Lock,
 } from 'lucide-react'
 import { generateMultipleStorePDFs } from '../../../utils/pdfGenerator'
 import { Rnd } from 'react-rnd'
@@ -144,6 +145,10 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
   // SecondPlanEditor特有のstate
   const [firstPlanShifts, setFirstPlanShifts] = useState([]) // 第1案（比較表示用）
   const [monthlyComments, setMonthlyComments] = useState([]) // 月次コメント
+  // 第2案プランのステータス ('DRAFT' | 'APPROVED' | 'CONFIRMED' | null)
+  // 全プランが同じステータスの場合のみそのステータス、それ以外は最も低いステータスとして扱う
+  const [planStatus, setPlanStatus] = useState(null)
+  const [confirming, setConfirming] = useState(false)
 
   // コメントをMapに変換（O(1)検索用）
   const commentsMap = useMemo(() => {
@@ -241,6 +246,18 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
           setPlanIdsState(allPlanIds)
         }
 
+        // plan_status を集約: すべて CONFIRMED なら CONFIRMED、すべて APPROVED なら APPROVED、それ以外は DRAFT
+        const statuses = new Set(
+          secondPlanShiftsData.map(s => s.plan_status?.toUpperCase()).filter(Boolean)
+        )
+        if (statuses.size === 1) {
+          setPlanStatus([...statuses][0])
+        } else if (statuses.has('DRAFT')) {
+          setPlanStatus('DRAFT')
+        } else {
+          setPlanStatus('APPROVED')
+        }
+
         // pattern_idを取得
         const fetchedPatternId =
           secondPlanShiftsData.length > 0 ? secondPlanShiftsData[0].pattern_id : null
@@ -273,6 +290,7 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
 
         // ★重要: planIdsStateをクリア（第1案のplan_idを使わない）
         setPlanIdsState([])
+        setPlanStatus(null)
 
         // 第1案を取得
         const firstPlanShiftsData = await shiftRepository.getShifts({
@@ -632,6 +650,37 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
     } catch (error) {
       console.error('承認処理エラー:', error)
       alert(`承認処理に失敗しました\n\nエラー: ${error.message}`)
+    }
+  }
+
+  // シフト確定ハンドラー（CONFIRMED ステータスへ遷移、全スタッフにLINE通知）
+  const handleConfirm = async () => {
+    if (planIdsState.length === 0) {
+      alert('確定できるプランが見つかりません')
+      return
+    }
+
+    if (planStatus !== 'APPROVED') {
+      alert('シフトを確定するには、まず第2案を承認してください')
+      return
+    }
+
+    if (!window.confirm(MESSAGES.WARNING.CONFIRM_SHIFT)) {
+      return
+    }
+
+    try {
+      setConfirming(true)
+      for (const id of planIdsState) {
+        await shiftRepository.updatePlanStatus(id, 'CONFIRMED')
+      }
+      setPlanStatus('CONFIRMED')
+      alert(MESSAGES.SUCCESS.CONFIRM_SHIFT)
+    } catch (error) {
+      console.error('シフト確定エラー:', error)
+      alert(`${MESSAGES.ERROR.SHIFT_CONFIRM_FAILED}\n\nエラー: ${error.message}`)
+    } finally {
+      setConfirming(false)
     }
   }
 
@@ -1642,6 +1691,38 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
                 )}
                 {saving ? '処理中...' : '第2案承認'}
               </Button>
+              {/* シフト確定ボタン: 第2案が APPROVED のときのみ表示、CONFIRMED 後は「確定済み」を表示 */}
+              {planStatus === 'APPROVED' && (
+                <Button
+                  size="sm"
+                  onClick={handleConfirm}
+                  disabled={confirming || saving || hasUnsavedChanges}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                  title={
+                    hasUnsavedChanges
+                      ? '未保存の変更があります。先に保存してください'
+                      : 'シフトを確定して全スタッフにLINE通知を送信します'
+                  }
+                >
+                  {confirming ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Lock className="h-4 w-4 mr-1" />
+                  )}
+                  {confirming ? '確定中...' : 'シフトを確定する'}
+                </Button>
+              )}
+              {planStatus === 'CONFIRMED' && (
+                <Button
+                  size="sm"
+                  disabled
+                  className="bg-gray-400 text-white cursor-not-allowed opacity-80"
+                  title="このシフトは確定済みです"
+                >
+                  <Lock className="h-4 w-4 mr-1" />
+                  確定済み
+                </Button>
+              )}
             </>
           )}
         </div>
