@@ -40,6 +40,7 @@ const MultiStoreShiftTable = ({
   onShiftClick, // シフト追加・編集用のコールバック
   showPreferenceColoring = true, // 希望シフトベースの色分けを表示するか（第一案ではfalse）
   commentsMap = new Map(), // 月次コメント（staff_id -> comment）
+  diffMap = null, // 第1案との差分マップ（key: `${staff_id}_YYYY-MM-DD` → 'added'|'removed'|'modified'|'unchanged'）
 }) => {
   const headerScrollRef = useRef(null)
   const bodyScrollRef = useRef(null)
@@ -708,6 +709,17 @@ const MultiStoreShiftTable = ({
                             const cellBgColor = getCellBackgroundColor(date, staff.staff_id)
                             const shouldShowShift = visibleShifts.length > 0
 
+                            // 第1案との差分ハイライト
+                            const diffType = diffMap
+                              ? diffMap.get(`${staff.staff_id}_${dateStr}`)
+                              : null
+                            const diffClass =
+                              {
+                                added: 'ring-2 ring-green-400',
+                                modified: 'ring-2 ring-yellow-400',
+                                removed: 'ring-2 ring-red-400',
+                              }[diffType] || ''
+
                             // セルクリックハンドラ
                             const handleCellClick = e => {
                               // 新しいonShiftClickがある場合はそれを優先
@@ -784,7 +796,7 @@ const MultiStoreShiftTable = ({
                                         {visibleShifts.map((s, idx) => (
                                           <div
                                             key={s.shift_id || idx}
-                                            className={`px-1 py-1 rounded ${getShiftCardColor(date, staff.staff_id, s)} relative cursor-pointer hover:ring-2 hover:ring-blue-400`}
+                                            className={`px-1 py-1 rounded ${getShiftCardColor(date, staff.staff_id, s)} ${diffClass} relative cursor-pointer hover:ring-2 hover:ring-blue-400`}
                                             onClick={e => {
                                               // 各シフトカードをクリックしたら、そのシフトを編集
                                               e.stopPropagation()
@@ -834,7 +846,7 @@ const MultiStoreShiftTable = ({
                                     ) : (
                                       // 単一シフト表示（3行固定: バッジ（応援時のみ）、時間、合計）
                                       <div
-                                        className={`px-1 py-1 rounded ${getShiftCardColor(date, staff.staff_id, shift)} relative`}
+                                        className={`px-1 py-1 rounded ${getShiftCardColor(date, staff.staff_id, shift)} ${diffClass} relative`}
                                       >
                                         {shift.modified_flag && (
                                           <div className="absolute top-0 right-0 text-xs bg-yellow-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[0.65rem] leading-none">
