@@ -144,3 +144,107 @@ describe('PUT /api/shifts/plans/:plan_id/status — NOTIFICATION_ENABLED guard',
     expect(axios.post).not.toHaveBeenCalled()
   })
 })
+
+describe('PUT /api/shifts/plans/:plan_id/status — CONFIRMED (shift-confirmed notification)', () => {
+  let app
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.LIFF_BACKEND_URL = 'https://liff-backend.example.com'
+    process.env.NOTIFICATION_ENABLED = 'true'
+    axios.post.mockResolvedValue({ data: { success: true } })
+    app = buildApp()
+  })
+
+  afterEach(() => {
+    delete process.env.LIFF_BACKEND_URL
+    delete process.env.NOTIFICATION_ENABLED
+  })
+
+  it('accepts CONFIRMED as a valid status', async () => {
+    mockFirstPlanLookupAndUpdate()
+
+    const res = await request(app).put(ENDPOINT).send({ status: 'CONFIRMED' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.new_status).toBe('CONFIRMED')
+  })
+
+  it('rejects unknown status values', async () => {
+    const res = await request(app).put(ENDPOINT).send({ status: 'UNKNOWN' })
+
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/DRAFT, APPROVED, CONFIRMED/)
+    expect(axios.post).not.toHaveBeenCalled()
+  })
+
+  it('sends shift-confirmed notification when CONFIRMED, NOTIFICATION_ENABLED="true", and LIFF_BACKEND_URL is set', async () => {
+    mockFirstPlanLookupAndUpdate()
+
+    const res = await request(app).put(ENDPOINT).send({ status: 'CONFIRMED' })
+
+    expect(res.status).toBe(200)
+    expect(axios.post).toHaveBeenCalledWith(
+      'https://liff-backend.example.com/api/notification/shift-confirmed',
+      { tenant_id: 1, store_id: 5, plan_id: PLAN_ID, year: 2026, month: 8 },
+      { timeout: 10000 }
+    )
+  })
+
+  it('sends shift-confirmed notification for SECOND plan too (plan_type-agnostic)', async () => {
+    query
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            plan_id: PLAN_ID,
+            tenant_id: 1,
+            store_id: 5,
+            plan_year: 2026,
+            plan_month: 8,
+            plan_type: 'SECOND',
+            status: 'APPROVED',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+
+    const res = await request(app).put(ENDPOINT).send({ status: 'CONFIRMED' })
+
+    expect(res.status).toBe(200)
+    expect(axios.post).toHaveBeenCalledWith(
+      'https://liff-backend.example.com/api/notification/shift-confirmed',
+      { tenant_id: 1, store_id: 5, plan_id: PLAN_ID, year: 2026, month: 8 },
+      { timeout: 10000 }
+    )
+  })
+
+  it('skips shift-confirmed notification when NOTIFICATION_ENABLED is not "true"', async () => {
+    process.env.NOTIFICATION_ENABLED = 'false'
+    mockFirstPlanLookupAndUpdate()
+
+    const res = await request(app).put(ENDPOINT).send({ status: 'CONFIRMED' })
+
+    expect(res.status).toBe(200)
+    expect(axios.post).not.toHaveBeenCalled()
+  })
+
+  it('skips shift-confirmed notification when LIFF_BACKEND_URL is not set', async () => {
+    delete process.env.LIFF_BACKEND_URL
+    mockFirstPlanLookupAndUpdate()
+
+    const res = await request(app).put(ENDPOINT).send({ status: 'CONFIRMED' })
+
+    expect(res.status).toBe(200)
+    expect(axios.post).not.toHaveBeenCalled()
+  })
+
+  it('does not fail the status update when notification post throws', async () => {
+    mockFirstPlanLookupAndUpdate()
+    axios.post.mockRejectedValueOnce(new Error('LIFF backend timeout'))
+
+    const res = await request(app).put(ENDPOINT).send({ status: 'CONFIRMED' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.new_status).toBe('CONFIRMED')
+  })
+})

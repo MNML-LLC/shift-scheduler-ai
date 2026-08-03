@@ -3287,7 +3287,7 @@ router.put('/plans/:plan_id/status', async (req, res, next) => {
     }
 
     // 有効なステータスかチェック
-    const validStatuses = ['DRAFT', 'APPROVED'];
+    const validStatuses = ['DRAFT', 'APPROVED', 'CONFIRMED'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -3363,6 +3363,35 @@ router.put('/plans/:plan_id/status', async (req, res, next) => {
     //     console.error('Failed to send LINE notification:', notifyError.message);
     //   }
     // }
+
+    // シフト確定通知（全スタッフへの個別LINE通知）
+    // status=CONFIRMED になったタイミングで LIFF backend の通知エンドポイントを叩き、
+    // LINE連携済みスタッフ全員に自分のシフト情報を送信する
+    if (
+      status === 'CONFIRMED' &&
+      isLineNotificationEnabled() &&
+      process.env.LIFF_BACKEND_URL
+    ) {
+      try {
+        await axios.post(
+          `${process.env.LIFF_BACKEND_URL}/api/notification/shift-confirmed`,
+          {
+            tenant_id: plan.tenant_id,
+            store_id: plan.store_id,
+            plan_id: parseInt(plan_id),
+            year: plan.plan_year,
+            month: plan.plan_month
+          },
+          { timeout: 10000 }
+        );
+        console.log('LINE shift-confirmed notification sent');
+      } catch (notifyError) {
+        // 通知失敗は確定処理に影響させない（ログのみ）
+        console.error('Failed to send shift-confirmed notification:', notifyError.message);
+      }
+    } else if (status === 'CONFIRMED' && !isLineNotificationEnabled()) {
+      console.log('shift-confirmed notification skipped: NOTIFICATION_ENABLED is not "true"');
+    }
 
     res.json({
       success: true,
