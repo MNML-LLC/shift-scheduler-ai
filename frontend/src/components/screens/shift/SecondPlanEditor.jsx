@@ -160,32 +160,58 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
   }, [monthlyComments])
 
   // 第1案 → 第2案の差分マップ
-  // key = `${staff_id}_YYYY-MM-DD` → 'added' | 'removed' | 'modified' | 'unchanged'
+  // key = `${staff_id}_YYYY-MM-DD_${shift_id}` → 'added' | 'removed' | 'modified' | 'unchanged'
+  // shift_id をキーに含めることで、同日複数シフトが上書きされないようにする
   const diffMap = useMemo(() => {
     const map = new Map()
     const normalizeDate = d => (typeof d === 'string' ? d.substring(0, 10) : '')
 
-    const firstIndex = new Map()
+    // 「差分ペアの探索」用: 同一 staff × 同一 date の第1案シフトを配列で保持
+    const firstByStaffDate = new Map()
     firstPlanShifts.forEach(s => {
-      const key = `${s.staff_id}_${normalizeDate(s.shift_date)}`
-      firstIndex.set(key, s)
+      const groupKey = `${s.staff_id}_${normalizeDate(s.shift_date)}`
+      if (!firstByStaffDate.has(groupKey)) {
+        firstByStaffDate.set(groupKey, [])
+      }
+      firstByStaffDate.get(groupKey).push(s)
     })
 
+    // 第1案側で既にマッチ済みのシフト shift_id を追跡（多重マッチ防止）
+    const matchedFirstIds = new Set()
+
     shiftData.forEach(s => {
-      const key = `${s.staff_id}_${normalizeDate(s.shift_date)}`
-      const first = firstIndex.get(key)
-      if (!first) {
+      const key = `${s.staff_id}_${normalizeDate(s.shift_date)}_${s.shift_id}`
+      const groupKey = `${s.staff_id}_${normalizeDate(s.shift_date)}`
+      const candidates = firstByStaffDate.get(groupKey) || []
+
+      // 未マッチの第1案シフトから、時間帯が完全一致するものを探す（unchanged）
+      let matched = candidates.find(
+        f =>
+          !matchedFirstIds.has(f.shift_id) &&
+          f.start_time === s.start_time &&
+          f.end_time === s.end_time
+      )
+      // なければ、未マッチの第1案シフトを1件消費して modified 扱い
+      if (!matched) {
+        matched = candidates.find(f => !matchedFirstIds.has(f.shift_id))
+      }
+
+      if (!matched) {
         map.set(key, 'added')
-      } else if (first.start_time !== s.start_time || first.end_time !== s.end_time) {
-        map.set(key, 'modified')
       } else {
-        map.set(key, 'unchanged')
+        matchedFirstIds.add(matched.shift_id)
+        if (matched.start_time !== s.start_time || matched.end_time !== s.end_time) {
+          map.set(key, 'modified')
+        } else {
+          map.set(key, 'unchanged')
+        }
       }
     })
 
+    // 第2案側にマッチしなかった第1案シフトは removed
     firstPlanShifts.forEach(s => {
-      const key = `${s.staff_id}_${normalizeDate(s.shift_date)}`
-      if (!map.has(key)) {
+      if (!matchedFirstIds.has(s.shift_id)) {
+        const key = `${s.staff_id}_${normalizeDate(s.shift_date)}_${s.shift_id}`
         map.set(key, 'removed')
       }
     })
