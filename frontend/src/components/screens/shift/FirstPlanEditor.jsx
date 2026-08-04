@@ -12,6 +12,7 @@ import {
   Minimize2,
   X,
   Home,
+  Printer,
 } from 'lucide-react'
 import { Rnd } from 'react-rnd'
 import MultiStoreShiftTable from '../../shared/MultiStoreShiftTable'
@@ -1116,7 +1117,7 @@ const FirstPlanEditor = ({
       className={`h-screen flex flex-col pt-16 ${isMobile ? 'overflow-auto' : 'overflow-hidden'}`}
     >
       {/* ヘッダー */}
-      <div className="mb-2 flex items-center justify-between flex-shrink-0 px-8 py-4 bg-white border-b border-gray-200">
+      <div className="mb-2 flex items-center justify-between flex-shrink-0 px-8 py-4 bg-white border-b border-gray-200 print-hidden">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={handleDashboard}>
             <Home className="h-4 w-4 mr-1" />
@@ -1142,6 +1143,12 @@ const FirstPlanEditor = ({
           <Button size="sm" variant="outline" onClick={handleExportCSV}>
             <Download className="h-3 w-3 mr-1" />
             CSVエクスポート
+          </Button>
+
+          {/* 印刷ボタン（ブラウザ標準の印刷ダイアログ → PDF 保存も可） */}
+          <Button size="sm" variant="outline" onClick={() => window.print()}>
+            <Printer className="h-3 w-3 mr-1" />
+            印刷
           </Button>
 
           {/* アクションボタン */}
@@ -1253,7 +1260,7 @@ const FirstPlanEditor = ({
       </div>
 
       {/* 店舗チェックボックス（表示フィルター） */}
-      <div className="px-8 mb-4">
+      <div className="px-8 mb-4 print-hidden">
         <div className="flex flex-wrap gap-3">
           {availableStores.map(store => {
             const storeIdNum = parseInt(store.store_id)
@@ -1280,7 +1287,7 @@ const FirstPlanEditor = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden mx-8 mb-4">
+      <div className="flex-1 overflow-hidden mx-8 mb-4 print-area">
         <MultiStoreShiftTable
           year={year}
           month={month}
