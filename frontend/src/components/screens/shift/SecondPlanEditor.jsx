@@ -159,6 +159,74 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
     return map
   }, [monthlyComments])
 
+  // 第1案 → 第2案の差分マップ
+  // key = `${staff_id}_YYYY-MM-DD_${shift_id}` → 'added' | 'removed' | 'modified' | 'unchanged'
+  // shift_id をキーに含めることで、同日複数シフトが上書きされないようにする
+  const diffMap = useMemo(() => {
+    const map = new Map()
+    const normalizeDate = d => (typeof d === 'string' ? d.substring(0, 10) : '')
+
+    // 「差分ペアの探索」用: 同一 staff × 同一 date の第1案シフトを配列で保持
+    const firstByStaffDate = new Map()
+    firstPlanShifts.forEach(s => {
+      const groupKey = `${s.staff_id}_${normalizeDate(s.shift_date)}`
+      if (!firstByStaffDate.has(groupKey)) {
+        firstByStaffDate.set(groupKey, [])
+      }
+      firstByStaffDate.get(groupKey).push(s)
+    })
+
+    // 第1案側で既にマッチ済みのシフト shift_id を追跡（多重マッチ防止）
+    const matchedFirstIds = new Set()
+
+    shiftData.forEach(s => {
+      const key = `${s.staff_id}_${normalizeDate(s.shift_date)}_${s.shift_id}`
+      const groupKey = `${s.staff_id}_${normalizeDate(s.shift_date)}`
+      const candidates = firstByStaffDate.get(groupKey) || []
+
+      // 未マッチの第1案シフトから、時間帯が完全一致するものを探す（unchanged）
+      let matched = candidates.find(
+        f =>
+          !matchedFirstIds.has(f.shift_id) &&
+          f.start_time === s.start_time &&
+          f.end_time === s.end_time
+      )
+      // なければ、未マッチの第1案シフトを1件消費して modified 扱い
+      if (!matched) {
+        matched = candidates.find(f => !matchedFirstIds.has(f.shift_id))
+      }
+
+      if (!matched) {
+        map.set(key, 'added')
+      } else {
+        matchedFirstIds.add(matched.shift_id)
+        if (matched.start_time !== s.start_time || matched.end_time !== s.end_time) {
+          map.set(key, 'modified')
+        } else {
+          map.set(key, 'unchanged')
+        }
+      }
+    })
+
+    // 第2案側にマッチしなかった第1案シフトは removed
+    firstPlanShifts.forEach(s => {
+      if (!matchedFirstIds.has(s.shift_id)) {
+        const key = `${s.staff_id}_${normalizeDate(s.shift_date)}_${s.shift_id}`
+        map.set(key, 'removed')
+      }
+    })
+
+    return map
+  }, [firstPlanShifts, shiftData])
+
+  const diffSummary = useMemo(() => {
+    const counts = { added: 0, removed: 0, modified: 0 }
+    diffMap.forEach(v => {
+      if (v in counts) counts[v]++
+    })
+    return counts
+  }, [diffMap])
+
   // 表示モード: 'second', 'first', 'compare'
   const [viewMode, setViewMode] = useState('second')
 
@@ -1756,6 +1824,29 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
         </div>
       </div>
 
+      {/* 第1案との差分サマリー */}
+      {firstPlanShifts.length > 0 &&
+        diffSummary.added + diffSummary.removed + diffSummary.modified > 0 && (
+          <div className="mx-8 mb-2 flex items-center gap-3 text-xs">
+            <span className="font-medium text-gray-600">第1案との差分:</span>
+            {diffSummary.added > 0 && (
+              <span className="px-2 py-0.5 rounded bg-green-100 text-green-700 border border-green-300">
+                ＋{diffSummary.added} 追加
+              </span>
+            )}
+            {diffSummary.removed > 0 && (
+              <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-300">
+                −{diffSummary.removed} 削除
+              </span>
+            )}
+            {diffSummary.modified > 0 && (
+              <span className="px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 border border-yellow-300">
+                ～{diffSummary.modified} 変更
+              </span>
+            )}
+          </div>
+        )}
+
       <div ref={tableContainerRef} className="flex-1 overflow-hidden mx-8 mb-4">
         <MultiStoreShiftTable
           year={year}
@@ -1775,6 +1866,7 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
           onConflictClick={setSelectedConflict}
           showPreferenceColoring={true}
           commentsMap={commentsMap}
+          diffMap={firstPlanShifts.length > 0 ? diffMap : null}
         />
       </div>
 
