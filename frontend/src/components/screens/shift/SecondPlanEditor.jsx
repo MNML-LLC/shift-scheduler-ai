@@ -22,6 +22,7 @@ import {
   Settings,
   ChevronDown,
   Lock,
+  Printer,
 } from 'lucide-react'
 import { generateMultipleStorePDFs } from '../../../utils/pdfGenerator'
 import { Rnd } from 'react-rnd'
@@ -1570,7 +1571,7 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
       className={`h-screen flex flex-col pt-16 ${isMobile ? 'overflow-auto' : 'overflow-hidden'}`}
     >
       {/* ヘッダー */}
-      <div className="mb-2 flex items-center justify-between flex-shrink-0 px-8 py-4 bg-white border-b border-gray-200">
+      <div className="mb-2 flex items-center justify-between flex-shrink-0 px-8 py-4 bg-white border-b border-gray-200 print-hidden">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={handleDashboard}>
             <Home className="h-4 w-4 mr-1" />
@@ -1644,6 +1645,16 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
                     <Download className="h-4 w-4 mr-2 text-purple-500" />
                   )}
                   {isGeneratingPNG ? '生成中...' : '店舗別シフト画像DL'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowActionsMenu(false)
+                    window.print()
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                >
+                  <Printer className="h-4 w-4 mr-2 text-gray-500" />
+                  印刷 / PDF 保存
                 </button>
                 {isEditMode && (
                   <>
@@ -1797,7 +1808,7 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
       </div>
 
       {/* 店舗チェックボックス */}
-      <div className="px-8 mb-4">
+      <div className="px-8 mb-4 print-hidden">
         <div className="flex flex-wrap gap-3">
           {availableStores.map(store => {
             const storeIdNum = parseInt(store.store_id)
@@ -1827,7 +1838,7 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
       {/* 第1案との差分サマリー */}
       {firstPlanShifts.length > 0 &&
         diffSummary.added + diffSummary.removed + diffSummary.modified > 0 && (
-          <div className="mx-8 mb-2 flex items-center gap-3 text-xs">
+          <div className="mx-8 mb-2 flex items-center gap-3 text-xs print-hidden">
             <span className="font-medium text-gray-600">第1案との差分:</span>
             {diffSummary.added > 0 && (
               <span className="px-2 py-0.5 rounded bg-green-100 text-green-700 border border-green-300">
@@ -1847,7 +1858,7 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
           </div>
         )}
 
-      <div ref={tableContainerRef} className="flex-1 overflow-hidden mx-8 mb-4">
+      <div ref={tableContainerRef} className="flex-1 overflow-hidden mx-8 mb-4 print-area">
         <MultiStoreShiftTable
           year={year}
           month={month}

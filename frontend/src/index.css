@@ -317,3 +317,42 @@ body {
     @apply gap-3;
   }
 }
+
+/* ===================================
+   印刷用スタイル
+   =================================== */
+
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    margin: 0;
+    padding: 0;
+  }
+
+  .print-area {
+    width: 100%;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .print-area table {
+    font-size: 9pt;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+}
