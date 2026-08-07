@@ -10,6 +10,13 @@ function getDbCheckTimeoutMs() {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_DB_CHECK_TIMEOUT_MS
 }
 
+// 稼働中デプロイの版数を返す。無認証で返るため秘密情報は含めない。
+function getVersion() {
+  const sha = process.env.RAILWAY_GIT_COMMIT_SHA
+  if (sha) return sha.slice(0, 7)
+  return process.env.APP_VERSION || 'unknown'
+}
+
 async function checkDatabaseConnection() {
   let timeoutId
   try {
@@ -97,6 +104,7 @@ router.get('/', async (req, res) => {
   res.status(connected ? 200 : 503).json({
     success: connected,
     status: connected ? 'ok' : 'error',
+    version: getVersion(),
     backend: {
       environment: getEnvironment(),
       hostname: req.hostname,
