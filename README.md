@@ -13,9 +13,15 @@ AIによる自動シフト生成システムです。PostgreSQLデータベー�
 - [DATABASE_GUIDE.md](docs/DATABASE_GUIDE.md) - データベース接続・セットアップ
 - [DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) - データベーススキーマ設計
 - [CONFIGURATION.md](docs/CONFIGURATION.md) - 設定ガイド
-- [QUICK_START.md](QUICK_START.md) - クイックスタートガイド
+- [QUICK_START.md](docs/QUICK_START.md) - クイックスタートガイド
 
 ## クイックスタート
+
+### 0. 前提条件
+
+- **Node.js**: `>=22.0.0`（`package.json` の `engines` で規定）
+- **PostgreSQL**: 15 以上
+- **pnpm**: フロントエンド用（`npm install -g pnpm`）
 
 ### 1. リポジトリのクローン
 
@@ -24,23 +30,42 @@ git clone https://github.com/info-mnml/shift-scheduler-ai.git
 cd shift-scheduler-ai
 ```
 
-### 2. データベースのセットアップ
+### 2. バックエンドの環境変数設定
 
 ```bash
-# 依存関係をインストール
-npm install
-
-# 環境変数の設定
+cd backend
 cp .env.example .env
-# .envファイルを編集してDATABASE_URLを設定
-
-# データベース初期化
-node scripts/setup/setup_fresh_db.mjs
+# .env を編集し、少なくとも DATABASE_URL を設定
+#   例: DATABASE_URL=postgresql://user:password@localhost:5432/shift_scheduler
+cd ..
 ```
 
-詳細は [DATABASE_GUIDE.md](docs/DATABASE_GUIDE.md) を参照。
+### 3. データベース初期化
 
-### 3. バックエンドの起動
+`scripts/database/setup/setup.mjs` が DDL → DML の順に実行します。
+
+```bash
+# 依存関係をインストール（ルートから backend も自動で入る）
+npm install
+
+# 開発環境用データ（マスターのみ）
+cd scripts/database/setup
+node setup.mjs --env dev
+
+# デモ環境用データ（マスター + Tenant3 のシフトデータ）
+# node setup.mjs --env demo
+```
+
+実行順序:
+
+1. DDL: `scripts/database/ddl/schema.sql` — 全テーブル作成
+2. DML: `scripts/database/dml/01_core_master.sql` — core スキーマ
+3. DML: `scripts/database/dml/02_hr_master.sql` — hr スキーマ
+4. DML: `scripts/database/dml/03_ops_master.sql` — ops スキーマ
+
+詳細は [scripts/database/README.md](scripts/database/README.md) および [DATABASE_GUIDE.md](docs/DATABASE_GUIDE.md) を参照。
+
+### 4. バックエンドの起動
 
 ```bash
 cd backend
@@ -48,7 +73,9 @@ npm install
 npm run dev  # http://localhost:3001 で起動
 ```
 
-### 4. フロントエンドの起動
+動作確認: `curl http://localhost:3001/api/health` が 200 と `database.connected: true` を返せば OK。
+
+### 5. フロントエンドの起動
 
 ```bash
 cd frontend
@@ -74,7 +101,7 @@ pnpm run dev  # http://localhost:5173 で起動
 ## 🛠️ 技術スタック
 
 ### Frontend
-- **Framework**: React 18, Vite
+- **Framework**: React 19, Vite
 - **UI**: Tailwind CSS v4, Radix UI
 - **Charts**: Recharts
 - **Animation**: Framer Motion
@@ -111,13 +138,13 @@ shift-scheduler-ai/
 │   └── .env                   # 環境変数
 │
 ├── scripts/
-│   ├── setup/                 # データベースセットアップ
-│   │   ├── schema.sql         # スキーマ定義（795行、30テーブル）
-│   │   ├── seed_data.sql      # マスターデータDML
-│   │   ├── seed_transaction_data.sql  # トランザクションデータDML（4,911件）
-│   │   ├── setup_fresh_db.mjs # DB初期化スクリプト
-│   │   └── verify_setup.mjs   # 検証スクリプト
-│   └── dev/                   # 開発用スクリプト
+│   ├── database/              # データベースセットアップ
+│   │   ├── ddl/schema.sql     # スキーマ定義（全テーブル）
+│   │   ├── dml/               # マスターデータ DML（01/02/03）
+│   │   ├── setup/setup.mjs    # DB 初期化スクリプト（--env dev/demo）
+│   │   └── migrations/        # node-pg-migrate マイグレーション
+│   ├── backup/                # 本番 DB バックアップ
+│   └── debug/                 # 開発・デバッグ用スクリプト
 │
 ├── docs/                      # ドキュメント
 │   ├── ARCHITECTURE.md        # アーキテクチャ設計

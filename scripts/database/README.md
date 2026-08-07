@@ -24,8 +24,16 @@ database/
 
 ### 前提条件
 
-- PostgreSQL 15+がインストールされていること
-- `backend/.env`にDATABASE_URLが設定されていること
+- Node.js `>=22.0.0`（リポジトリルートの `package.json` `engines` に準拠）
+- PostgreSQL 15+ がインストールされ、ローカルに空 DB を作成済みであること
+  ```bash
+  # 例: ローカル DB を作成する
+  createdb shift_scheduler
+  ```
+- `backend/.env` に `DATABASE_URL` が設定されていること
+  - 形式: `postgresql://<user>:<password>@<host>:<port>/<database>`
+  - 例（ローカル）: `postgresql://postgres:postgres@localhost:5432/shift_scheduler`
+  - `backend/.env.example` をコピーして編集してください
 
 ### 開発環境セットアップ
 
@@ -41,6 +49,26 @@ node setup.mjs --env dev
 2. DML: `01_core_master.sql` - coreスキーママスター
 3. DML: `02_hr_master.sql` - hrスキーママスター
 4. DML: `03_ops_master.sql` - opsスキーママスター
+
+### 動作確認
+
+セットアップ後、テーブルが作成されていることを確認します。
+
+```bash
+# スキーマとテーブル数を確認（psql を使う場合）
+psql "$DATABASE_URL" -c "\dn"                     # スキーマ一覧（core / hr / ops が並ぶ）
+psql "$DATABASE_URL" -c "\dt core.*"              # core スキーマのテーブル一覧
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM core.tenants;"  # マスターデータ件数
+```
+
+バックエンドの `/api/health` エンドポイントでも DB 接続を確認できます。
+
+```bash
+cd backend && npm run dev
+# 別ターミナルで
+curl http://localhost:3001/api/health
+# → {"status":"ok","database":{"connected":true, ...}}
+```
 
 ### デモ環境セットアップ
 
