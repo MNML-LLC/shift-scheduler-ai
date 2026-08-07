@@ -97,30 +97,27 @@ curl -X POST http://localhost:3001/api/openai/files \
   }'
 ```
 
-## APIエンドポイント
+## API エンドポイント
 
-### OpenAI プロキシ
+**全 API 仕様の Single Source of Truth は [`openapi.yaml`](./openapi.yaml)**（80 パス / 112 オペレーション）です。
+[Swagger Editor](https://editor.swagger.io/) や [Redocly Preview](https://redocly.github.io/redoc/) に貼り付けてブラウザで参照できます。
 
-| エンドポイント | メソッド | 説明 |
-|--------------|---------|------|
-| `/api/openai/chat/completions` | POST | Chat Completions |
-| `/api/openai/vector_stores` | POST | Vector Store作成 |
-| `/api/openai/vector_stores/:id/files` | POST | Vector StoreにFile追加 |
-| `/api/openai/files` | POST | ファイルアップロード (CSV→JSON) |
-| `/api/openai/files/:id/content` | GET | ファイルダウンロード |
-| `/api/openai/assistants` | POST | Assistant作成 |
-| `/api/openai/threads` | POST | Thread作成 |
-| `/api/openai/threads/:id/messages` | POST/GET | Message追加/取得 |
-| `/api/openai/threads/:id/runs` | POST | Run実行 |
-| `/api/openai/threads/:id/runs/:runId` | GET | Run状態取得 |
+### マウントプレフィクス概要 (`src/server.js`)
 
-### CSV処理
+| プレフィクス | ルーター | 用途 |
+|---|---|---|
+| `/api/health` | `health.js` | ヘルスチェック (DB 到達性) |
+| `/api/tenants` | `tenants.js` | テナント一覧 / 詳細 |
+| `/api/master` | `master.js` | マスタ CRUD (staff / roles / stores / skills / employment-types / shift-patterns / divisions / commute / insurance / tax など) |
+| `/api/shifts` | `shifts.js` | シフト計画・シフト・希望シフトの CRUD, AI 生成, 承認, バッチ |
+| `/api/analytics` | `analytics.js` | 給与・売上・労働時間・ダッシュボード指標 |
+| `/api/liff` | `liff.js` | LINE LIFF (希望シフト / 月次提出 / スタッフ登録) |
+| `/api/holidays` | `holidays.js` | 日本の祝日 (内閣府 CSV 由来、24h キャッシュ) |
+| `/api/openai` | `openai.js` | OpenAI API プロキシ (Chat / Assistants / Vector Stores) |
+| `/api/vector-store` | `vector-store.js` | DB マスタから Vector Store を構築 |
+| `/api` | `csv.js` | `save-csv` / `load-csv` |
 
-| エンドポイント | メソッド | 説明 |
-|--------------|---------|------|
-| `/api/save-csv` | POST | CSVファイル保存 |
-
-詳細は [API.md](./API.md) を参照してください。
+エンドポイントごとの詳細 (メソッド / パラメータ / リクエスト・レスポンス / エラーコード) は `openapi.yaml` を参照してください。
 
 ## テスト
 
@@ -161,7 +158,7 @@ backend/
 │   └── utils/
 │       └── logger.js          # ログ管理
 ├── openapi.yaml               # OpenAPI 3.0スペック
-├── API.md                     # APIドキュメント
+├── API.md                     # 廃止マーカー (openapi.yaml を参照)
 ├── vitest.config.js           # テスト設定
 ├── package.json
 └── README.md                  # このファイル
@@ -310,8 +307,8 @@ npm run test:coverage  # カバレッジ計測
 
 ## ドキュメント
 
-- [API.md](./API.md) - 詳細なAPIドキュメント
-- [openapi.yaml](./openapi.yaml) - OpenAPI 3.0スペック
+- [openapi.yaml](./openapi.yaml) - **API 仕様の Single Source of Truth (OpenAPI 3.0)**
+- [API.md](./API.md) - 廃止マーカー (openapi.yaml を参照)
 - [フロントエンドREADME](../frontend/README.md)
 - [プロジェクトREADME](../README.md)
 
