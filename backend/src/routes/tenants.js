@@ -1,5 +1,5 @@
 import express from 'express'
-import db, { DatabaseUnavailableError } from '../config/database.js'
+import { query, DatabaseUnavailableError } from '../config/database.js'
 import { MESSAGES } from '../constants/messages.js'
 
 const router = express.Router()
@@ -7,7 +7,7 @@ const router = express.Router()
 // テナント一覧取得
 router.get('/', async (req, res, next) => {
   try {
-    const result = await db.query(`
+    const result = await query(`
       SELECT
         tenant_id,
         tenant_code,
@@ -40,7 +40,7 @@ router.get('/:tenant_id', async (req, res, next) => {
   try {
     const { tenant_id } = req.params
 
-    const result = await db.query(
+    const result = await query(
       `
       SELECT
         tenant_id,
