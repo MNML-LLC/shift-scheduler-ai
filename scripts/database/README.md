@@ -10,9 +10,11 @@ database/
 │   └── schema.sql                    # DDL（スキーマ定義）
 │
 ├── dml/
-│   ├── 01_core_master.sql            # coreスキーママスターデータ
-│   ├── 02_hr_master.sql              # hrスキーママスターデータ
-│   └── 03_ops_master.sql             # opsスキーママスターデータ
+│   └── STAND_BANH_MI/
+│       └── 00_initialize/
+│           ├── 01_core_master_stand-banh-mi.sql   # coreスキーママスターデータ
+│           ├── 02_hr_master_stand-banh-mi.sql     # hrスキーママスターデータ
+│           └── 03_ops_master_stand-banh-mi.sql    # opsスキーママスターデータ
 │
 └── setup/
     ├── setup.mjs                     # メインセットアップスクリプト
@@ -46,9 +48,9 @@ node setup.mjs --env dev
 
 **実行内容:**
 1. DDL: `schema.sql` - 全テーブル作成
-2. DML: `01_core_master.sql` - coreスキーママスター
-3. DML: `02_hr_master.sql` - hrスキーママスター
-4. DML: `03_ops_master.sql` - opsスキーママスター
+2. DML: `STAND_BANH_MI/00_initialize/01_core_master_stand-banh-mi.sql` - coreスキーママスター
+3. DML: `STAND_BANH_MI/00_initialize/02_hr_master_stand-banh-mi.sql` - hrスキーママスター
+4. DML: `STAND_BANH_MI/00_initialize/03_ops_master_stand-banh-mi.sql` - opsスキーママスター
 
 ### 動作確認
 
@@ -81,7 +83,7 @@ node setup.mjs --env demo
 
 **実行内容:**
 1. DDL: `schema.sql`
-2. DML: 01, 02, 03_master.sql
+2. DML: `STAND_BANH_MI/00_initialize/01_core_master_stand-banh-mi.sql`, `02_hr_master_stand-banh-mi.sql`, `03_ops_master_stand-banh-mi.sql`
 3. Script: `setup_tenant3_test_data.mjs` - 51名のスタッフ + 3077件のシフト登録
 
 ## ファイル詳細
@@ -113,7 +115,7 @@ node setup.mjs --env demo
 
 ### DML
 
-#### `dml/01_core_master.sql` - coreスキーマ
+#### `dml/STAND_BANH_MI/00_initialize/01_core_master_stand-banh-mi.sql` - coreスキーマ
 
 - テナント (tenant_id=3, Stand Banh Mi)
 - 事業部 (デフォルト部門)
@@ -123,14 +125,14 @@ node setup.mjs --env demo
 - シフトパターン (早番、中番、遅番、通し)
 - スキル (調理基礎、調理上級、接客、レジ、マネジメント)
 
-#### `dml/02_hr_master.sql` - hrスキーマ
+#### `dml/STAND_BANH_MI/00_initialize/02_hr_master_stand-banh-mi.sql` - hrスキーマ
 
 - 税率区分 (7段階の累進課税)
 - 社会保険料率 (健康保険、厚生年金、雇用保険、労災保険)
 - 通勤手当 (距離別5段階)
 - スタッフ (簡易版: テストスタッフのみ)
 
-#### `dml/03_ops_master.sql` - opsスキーマ
+#### `dml/STAND_BANH_MI/00_initialize/03_ops_master_stand-banh-mi.sql` - opsスキーマ
 
 - 労働法制約 (7種類: 週間労働時間、日労働時間等)
 - 労務管理ルール (5種類: 残業アラート、連続勤務等)
@@ -209,9 +211,9 @@ ERROR: syntax error at or near
 ### マスターデータを修正したい
 
 1. 該当するSQLファイルを編集:
-   - `dml/01_core_master.sql` - coreスキーマ
-   - `dml/02_hr_master.sql` - hrスキーマ
-   - `dml/03_ops_master.sql` - opsスキーマ
+   - `dml/STAND_BANH_MI/00_initialize/01_core_master_stand-banh-mi.sql` - coreスキーマ
+   - `dml/STAND_BANH_MI/00_initialize/02_hr_master_stand-banh-mi.sql` - hrスキーマ
+   - `dml/STAND_BANH_MI/00_initialize/03_ops_master_stand-banh-mi.sql` - opsスキーマ
 
 2. データベースを再セットアップ:
    ```bash
