@@ -19,6 +19,8 @@ describe('GET /api/health', () => {
 
   afterEach(() => {
     delete process.env.HEALTH_DB_CHECK_TIMEOUT_MS
+    delete process.env.RAILWAY_GIT_COMMIT_SHA
+    delete process.env.APP_VERSION
   })
 
   it('returns 200 with connected: true when the DB responds', async () => {
@@ -34,6 +36,7 @@ describe('GET /api/health', () => {
     expect(response.body.backend).toHaveProperty('environment')
     expect(response.body.database).toHaveProperty('environment')
     expect(response.body.database).toHaveProperty('host')
+    expect(response.body).toHaveProperty('version')
   })
 
   it('returns 503 with connected: false when the DB query fails', async () => {
@@ -45,6 +48,7 @@ describe('GET /api/health', () => {
     expect(response.body.success).toBe(false)
     expect(response.body.status).toBe('error')
     expect(response.body.database.connected).toBe(false)
+    expect(response.body).toHaveProperty('version')
   })
 
   it('returns 503 with connected: false when the DB check times out', async () => {
@@ -56,5 +60,34 @@ describe('GET /api/health', () => {
     expect(response.status).toBe(503)
     expect(response.body.success).toBe(false)
     expect(response.body.database.connected).toBe(false)
+  })
+
+  it('returns short RAILWAY_GIT_COMMIT_SHA as version when set', async () => {
+    process.env.RAILWAY_GIT_COMMIT_SHA = 'abcdef1234567890'
+    query.mockResolvedValue({ rows: [{ '?column?': 1 }] })
+
+    const response = await request(app).get('/api/health')
+
+    expect(response.status).toBe(200)
+    expect(response.body.version).toBe('abcdef1')
+  })
+
+  it('falls back to APP_VERSION when RAILWAY_GIT_COMMIT_SHA is not set', async () => {
+    process.env.APP_VERSION = '1.2.3'
+    query.mockResolvedValue({ rows: [{ '?column?': 1 }] })
+
+    const response = await request(app).get('/api/health')
+
+    expect(response.status).toBe(200)
+    expect(response.body.version).toBe('1.2.3')
+  })
+
+  it("falls back to 'unknown' when neither RAILWAY_GIT_COMMIT_SHA nor APP_VERSION is set", async () => {
+    query.mockResolvedValue({ rows: [{ '?column?': 1 }] })
+
+    const response = await request(app).get('/api/health')
+
+    expect(response.status).toBe(200)
+    expect(response.body.version).toBe('unknown')
   })
 })
