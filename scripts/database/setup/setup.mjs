@@ -28,12 +28,20 @@ const ENVIRONMENTS = {
   dev: {
     name: '開発環境',
     ddl: ['../ddl/schema.sql'],
-    dml: ['../dml/01_core_master.sql', '../dml/02_hr_master.sql', '../dml/03_ops_master.sql']
+    dml: [
+      '../dml/STAND_BANH_MI/00_initialize/01_core_master_stand-banh-mi.sql',
+      '../dml/STAND_BANH_MI/00_initialize/02_hr_master_stand-banh-mi.sql',
+      '../dml/STAND_BANH_MI/00_initialize/03_ops_master_stand-banh-mi.sql'
+    ]
   },
   demo: {
     name: 'デモ環境',
     ddl: ['../ddl/schema.sql'],
-    dml: ['../dml/01_core_master.sql', '../dml/02_hr_master.sql', '../dml/03_ops_master.sql'],
+    dml: [
+      '../dml/STAND_BANH_MI/00_initialize/01_core_master_stand-banh-mi.sql',
+      '../dml/STAND_BANH_MI/00_initialize/02_hr_master_stand-banh-mi.sql',
+      '../dml/STAND_BANH_MI/00_initialize/03_ops_master_stand-banh-mi.sql'
+    ],
     scripts: ['./setup_tenant3_test_data.mjs']
   }
 };

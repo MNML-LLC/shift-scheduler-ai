@@ -59,9 +59,9 @@ node setup.mjs --env dev
 実行順序:
 
 1. DDL: `scripts/database/ddl/schema.sql` — 全テーブル作成
-2. DML: `scripts/database/dml/01_core_master.sql` — core スキーマ
-3. DML: `scripts/database/dml/02_hr_master.sql` — hr スキーマ
-4. DML: `scripts/database/dml/03_ops_master.sql` — ops スキーマ
+2. DML: `scripts/database/dml/STAND_BANH_MI/00_initialize/01_core_master_stand-banh-mi.sql` — core スキーマ
+3. DML: `scripts/database/dml/STAND_BANH_MI/00_initialize/02_hr_master_stand-banh-mi.sql` — hr スキーマ
+4. DML: `scripts/database/dml/STAND_BANH_MI/00_initialize/03_ops_master_stand-banh-mi.sql` — ops スキーマ
 
 詳細は [scripts/database/README.md](scripts/database/README.md) および [DATABASE_GUIDE.md](docs/DATABASE_GUIDE.md) を参照。
 
@@ -139,9 +139,9 @@ shift-scheduler-ai/
 │
 ├── scripts/
 │   ├── database/              # データベースセットアップ
-│   │   ├── ddl/schema.sql     # スキーマ定義（全テーブル）
-│   │   ├── dml/               # マスターデータ DML（01/02/03）
-│   │   ├── setup/setup.mjs    # DB 初期化スクリプト（--env dev/demo）
+│   │   ├── ddl/schema.sql                              # スキーマ定義（全テーブル）
+│   │   ├── dml/STAND_BANH_MI/00_initialize/            # マスターデータ DML（01/02/03）
+│   │   ├── setup/setup.mjs                             # DB 初期化スクリプト（--env dev/demo）
 │   │   └── migrations/        # node-pg-migrate マイグレーション
 │   ├── backup/                # 本番 DB バックアップ
 │   └── debug/                 # 開発・デバッグ用スクリプト
