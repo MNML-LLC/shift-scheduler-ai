@@ -78,7 +78,7 @@
     "dom-to-image-more": "^3.7.2",
     "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.6.0",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
     "form-data": "^4.0.4",
     "framer-motion": "^12.15.0",
     "input-otp": "^1.4.2",
