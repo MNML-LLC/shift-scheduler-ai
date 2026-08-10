@@ -8,6 +8,9 @@ updates:
       time: '09:00'
       timezone: 'Asia/Tokyo'
     open-pull-requests-limit: 10
+    # メジャーバージョンアップ時に package-lock.json が未同期のまま PR が作られる問題（Issue #223, #126）
+    # の対策として versioning-strategy を明示。npm では自動的に lockfile も更新される。
+    versioning-strategy: 'increase'
     commit-message:
       prefix: 'chore'
       include: 'scope'
@@ -28,6 +31,7 @@ updates:
       time: '09:00'
       timezone: 'Asia/Tokyo'
     open-pull-requests-limit: 10
+    versioning-strategy: 'increase'
     commit-message:
       prefix: 'chore'
       include: 'scope'
