@@ -110,6 +110,7 @@ const MonthItem = ({ status, label, statusLabel, isSelected, onClick }) => {
  * @param {Function} props.onMonthSelect - 月選択時のコールバック (year, month) => void
  * @param {Function} props.onStaffManagement - スタッフ管理クリック時のコールバック
  * @param {Function} props.onMasterManagement - マスター管理クリック時のコールバック
+ * @param {Function} [props.onDeadlineSettings] - 締切日設定クリック時のコールバック
  * @param {string} props.currentPath - 現在のパス（アクティブ表示用）
  */
 const Sidebar = ({
@@ -118,6 +119,7 @@ const Sidebar = ({
   onMonthSelect,
   onStaffManagement,
   onMasterManagement,
+  onDeadlineSettings,
   currentPath = '/',
 }) => {
   const monthList = getMonthList(2, 2)
@@ -189,6 +191,17 @@ const Sidebar = ({
           <SettingsIcon />
           <span>マスター管理</span>
         </button>
+
+        {/* シフト希望 締切日設定 */}
+        {onDeadlineSettings && (
+          <button
+            onClick={onDeadlineSettings}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 mb-1 w-full text-left transition-colors"
+          >
+            <CalendarIcon />
+            <span>シフト希望 締切日設定</span>
+          </button>
+        )}
       </nav>
     </div>
   )

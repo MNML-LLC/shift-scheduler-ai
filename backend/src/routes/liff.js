@@ -6,6 +6,43 @@ const router = express.Router()
 const pool = getPool()
 
 /**
+ * シフト希望対象月の前月における締切日時（JST）を過ぎているか判定する。
+ * schema: 対象月 N のシフト希望は、N-1 月の deadline_day deadline_time が締切。
+ *
+ * @param {string} targetDate - シフト希望日 (YYYY-MM-DD)
+ * @param {number} deadlineDay - 締切日 (1..31)
+ * @param {string} deadlineTime - 締切時刻 "HH:MM"
+ * @param {Date} now - 現在時刻（UTC Date）
+ * @returns {{ passed: boolean, deadlineIso: string }}
+ */
+function isDeadlinePassed(targetDate, deadlineDay, deadlineTime, now) {
+  const [targetYear, targetMonth] = targetDate.split('-').map(Number)
+
+  // N-1 月を計算（1月なら前年12月）
+  let deadlineYear = targetYear
+  let deadlineMonth = targetMonth - 1
+  if (deadlineMonth === 0) {
+    deadlineMonth = 12
+    deadlineYear -= 1
+  }
+
+  // 締切日が月末を超える場合はその月の月末に丸める
+  const lastDayOfDeadlineMonth = new Date(Date.UTC(deadlineYear, deadlineMonth, 0)).getUTCDate()
+  const clampedDay = Math.min(deadlineDay, lastDayOfDeadlineMonth)
+
+  const [hh = '0', mm = '0'] = String(deadlineTime || '00:00').split(':')
+  const deadlineIso =
+    `${deadlineYear}-${String(deadlineMonth).padStart(2, '0')}-` +
+    `${String(clampedDay).padStart(2, '0')}T${hh.padStart(2, '0')}:${mm.padStart(2, '0')}:00+09:00`
+
+  const deadlineUtc = new Date(deadlineIso)
+  return {
+    passed: now.getTime() > deadlineUtc.getTime(),
+    deadlineIso
+  }
+}
+
+/**
  * スタッフのシフト希望を登録するエンドポイント
  * POST /api/liff/shift-request
  *
@@ -34,7 +71,7 @@ router.post('/shift-request', verifyLineToken, async (req, res) => {
 
     // LINE User IDからスタッフ情報を取得
     const staffResult = await client.query(
-      `SELECT s.staff_id, s.store_id
+      `SELECT s.staff_id, s.store_id, s.tenant_id, s.employment_type
        FROM hr.staff_line_accounts sla
        JOIN hr.staff s ON sla.staff_id = s.staff_id
        WHERE sla.line_user_id = $1 AND sla.is_active = true`,
@@ -48,7 +85,38 @@ router.post('/shift-request', verifyLineToken, async (req, res) => {
       })
     }
 
-    const { staff_id, store_id } = staffResult.rows[0]
+    const { staff_id, store_id, tenant_id, employment_type } = staffResult.rows[0]
+
+    // 締切チェック: スタッフの employment_type に対応する設定を参照。
+    // is_enabled=true かつ 現在時刻(JST)が「対象月の前月 deadline_day deadline_time」を過ぎていれば 403。
+    const deadlineResult = await client.query(
+      `SELECT deadline_day, deadline_time, is_enabled
+       FROM core.shift_deadline_settings
+       WHERE tenant_id = $1 AND employment_type = $2`,
+      [tenant_id, employment_type]
+    )
+
+    if (deadlineResult.rows.length > 0 && deadlineResult.rows[0].is_enabled) {
+      const { deadline_day, deadline_time } = deadlineResult.rows[0]
+      const now = new Date()
+      // 提出対象月ごとに締切を判定（複数月混在する場合はいずれか一つでも過ぎていれば拒否）
+      const targetDates = shift_dates.map(s => s.date).filter(Boolean)
+      for (const targetDate of targetDates) {
+        const { passed, deadlineIso } = isDeadlinePassed(
+          targetDate,
+          deadline_day,
+          deadline_time,
+          now
+        )
+        if (passed) {
+          return res.status(403).json({
+            success: false,
+            error: 'シフト希望の提出期限を過ぎています',
+            deadline: deadlineIso
+          })
+        }
+      }
+    }
 
     // トランザクション開始
     await client.query('BEGIN')

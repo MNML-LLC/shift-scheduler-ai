@@ -19,6 +19,7 @@ import StoreManagement from './components/screens/StoreManagement'
 import ConstraintManagement from './components/screens/ConstraintManagement'
 import BudgetActualManagement from './components/screens/BudgetActualManagement'
 import MasterDataManagement from './components/screens/MasterDataManagement'
+import DeadlineSettings from './components/screens/DeadlineSettings'
 import DevTools from './dev/DevTools'
 
 // デバッグ用: グローバルにテナント設定関数を公開
@@ -60,6 +61,7 @@ const router = createBrowserRouter([
       { path: 'master', element: <MasterDataManagement /> },
       { path: 'budget-actual', element: <BudgetActualManagement /> },
       { path: 'constraint', element: <ConstraintManagement /> },
+      { path: 'deadline-settings', element: <DeadlineSettings /> },
       {
         path: 'shift',
         children: [
