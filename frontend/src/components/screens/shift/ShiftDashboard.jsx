@@ -231,6 +231,11 @@ const ShiftDashboard = ({ onStaffManagement }) => {
     navigate('/master')
   }
 
+  const handleMobileDeadlineSettings = () => {
+    setSidebarOpen(false)
+    navigate('/deadline-settings')
+  }
+
   return (
     <div className="flex h-screen">
       {/* サイドバー（デスクトップ: 常時表示 / モバイル: ドロワー） */}
@@ -241,6 +246,7 @@ const ShiftDashboard = ({ onStaffManagement }) => {
           onMonthSelect={handleMonthSelect}
           onStaffManagement={handleStaffManagement}
           onMasterManagement={() => navigate('/master')}
+          onDeadlineSettings={() => navigate('/deadline-settings')}
           currentPath="/"
         />
       )}
@@ -253,6 +259,7 @@ const ShiftDashboard = ({ onStaffManagement }) => {
               onMonthSelect={handleMobileMonthSelect}
               onStaffManagement={handleMobileStaffManagement}
               onMasterManagement={handleMobileMasterManagement}
+              onDeadlineSettings={handleMobileDeadlineSettings}
               currentPath="/"
             />
           </div>

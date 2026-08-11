@@ -2079,4 +2079,130 @@ router.delete('/tax-brackets/:bracket_id', async (req, res, next) => {
   }
 });
 
+/**
+ * シフト希望入力期限設定取得（管理者）
+ * GET /api/master/deadline-settings?tenant_id=1
+ */
+router.get('/deadline-settings', async (req, res, next) => {
+  try {
+    const { tenant_id } = req.query;
+
+    if (!tenant_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'tenant_idの指定が必要です'
+      });
+    }
+
+    const result = await query(`
+      SELECT
+        deadline_setting_id,
+        tenant_id,
+        employment_type,
+        deadline_day,
+        deadline_time,
+        is_enabled,
+        description,
+        created_at,
+        updated_at
+      FROM core.shift_deadline_settings
+      WHERE tenant_id = $1
+      ORDER BY employment_type
+    `, [tenant_id]);
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
+    console.error('Error fetching deadline settings:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * シフト希望入力期限設定 UPSERT（管理者）
+ * PUT /api/master/deadline-settings
+ *
+ * リクエストボディ:
+ * {
+ *   tenant_id: 1,
+ *   employment_type: "PART_TIME",
+ *   deadline_day: 15,
+ *   deadline_time: "18:00",
+ *   is_enabled: true,
+ *   description: "アルバイト・パート"
+ * }
+ */
+router.put('/deadline-settings', async (req, res, next) => {
+  try {
+    const {
+      tenant_id,
+      employment_type,
+      deadline_day,
+      deadline_time,
+      is_enabled,
+      description
+    } = req.body;
+
+    if (!tenant_id || !employment_type || deadline_day === undefined || !deadline_time) {
+      return res.status(400).json({
+        success: false,
+        error: 'tenant_id, employment_type, deadline_day, deadline_time は必須です'
+      });
+    }
+
+    const deadlineDayInt = parseInt(deadline_day, 10);
+    if (!Number.isInteger(deadlineDayInt) || deadlineDayInt < 1 || deadlineDayInt > 31) {
+      return res.status(400).json({
+        success: false,
+        error: 'deadline_day は 1〜31 の整数で指定してください'
+      });
+    }
+
+    if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(String(deadline_time))) {
+      return res.status(400).json({
+        success: false,
+        error: 'deadline_time は "HH:MM" 形式で指定してください'
+      });
+    }
+
+    const result = await query(`
+      INSERT INTO core.shift_deadline_settings
+        (tenant_id, employment_type, deadline_day, deadline_time, is_enabled, description)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (tenant_id, employment_type) DO UPDATE SET
+        deadline_day = EXCLUDED.deadline_day,
+        deadline_time = EXCLUDED.deadline_time,
+        is_enabled = EXCLUDED.is_enabled,
+        description = EXCLUDED.description,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `, [
+      tenant_id,
+      employment_type,
+      deadlineDayInt,
+      deadline_time,
+      is_enabled === undefined ? true : Boolean(is_enabled),
+      description ?? null
+    ]);
+
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
+    console.error('Error upserting deadline setting:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 export default router;
