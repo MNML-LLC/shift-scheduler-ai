@@ -84,6 +84,7 @@ POST /api/shifts/plans/monthly-first-plan-batch
 #### `NOTIFICATION_ENABLED` の運用方針
 
 - **既定は無効（`false`）**。意図しないタイミングでスタッフに LINE 通知が送信されることを防ぐため。
+- **再有効化の判断基準・手順・ロールバックは [`notification-reactivation.md`](notification-reactivation.md) を SoT とする**（Issue #244）。CEO の明示的承認なしに `true` に切り替えてはならない。
 - 通知を有効化する場合は Railway で `NOTIFICATION_ENABLED=true` を設定する（本番・ステージング共通）。
 - Railway 上で値を変更した後は、サービスを再デプロイ（あるいは Restart）して環境変数を反映させる。
 - 対象となる通知（すべて LIFF backend の通知エンドポイント経由）:
