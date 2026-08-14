@@ -55,7 +55,7 @@ backend の `NOTIFICATION_ENABLED` を `true` にした瞬間から上記全て�
 
 - [ ] LINE 連携済みスタッフの人数を本番 DB で確認済み
       （オペレータに実行してもらう:
-      `SELECT COUNT(*) FROM ops.staff WHERE line_user_id IS NOT NULL AND is_active = true;`）
+      `SELECT COUNT(*) FROM hr.staff_line_accounts sla JOIN hr.staff s ON sla.staff_id = s.staff_id WHERE sla.is_active = true AND s.is_active = true;`）
 - [ ] 上記人数が想定範囲内であること（テスト用の古い LINE ID や退職済みスタッフが混入していないか）
 - [ ] 直近1ヶ月に退職・異動したスタッフの `is_active=false` 反映が完了している
       （退職者に通知が飛ばないことを確認）
@@ -81,8 +81,9 @@ backend の `NOTIFICATION_ENABLED` を `true` にした瞬間から上記全て�
 
 ### 2.5 段階的ロールアウトの計画
 
-- [ ] **最初は1店舗のみ**で本番検証する運用計画になっている（DB でその店舗のスタッフ以外を
-      一時的に `line_user_id=NULL` にする、または LIFF backend 側で店舗フィルタを効かせる等）
+- [ ] **最初は1店舗のみ**で本番検証する運用計画になっている（DB でその店舗のスタッフ以外の
+      `hr.staff_line_accounts.is_active` を一時的に `false` にする、または LIFF backend 側で
+      店舗フィルタを効かせる等）
 - [ ] 1店舗検証で 24 時間問題がないことを確認してから全店舗展開する順序が合意済み
 - [ ] 段階拡大の各ステップで、次項「モニタリング」を実施できる時間帯（営業時間内・オペレータ待機）に
       切り替えを行う計画
@@ -112,9 +113,11 @@ backend の `NOTIFICATION_ENABLED` を `true` にした瞬間から上記全て�
 1. **切替の直前**に、以下のいずれかの方法で通知対象を1店舗に限定する:
    - **推奨**: LIFF backend 側で環境変数 `NOTIFICATION_STORE_ALLOWLIST=<store_id>` 等の
      フィルタを効かせる（LIFF リポで実装がある場合）
-   - **フォールバック**: 本番 DB で対象1店舗以外のスタッフの `line_user_id` を一時的に
-     別カラム（`line_user_id_backup`）に退避する SQL を用意し、事前に切戻し SQL とセットで
-     オペレータに送付する
+   - **フォールバック**: 本番 DB で対象1店舗以外のスタッフの
+     `hr.staff_line_accounts.is_active` を一時的に `false` にする SQL を用意し、事前に切戻し
+     SQL（`is_active = true` へ戻す）とセットでオペレータに送付する
+     （`line_user_id` は `NOT NULL` 制約があるため NULL 退避は使えない。無効化は
+     `is_active` トグルで行う）
 2. Railway ダッシュボード → **production environment** → **shift-scheduler-ai** サービス → **Variables**
 3. `NOTIFICATION_ENABLED` を `true` に設定
 4. サービスを **Restart**（Variables 変更後は自動で再起動されるが、明示的に確認）
