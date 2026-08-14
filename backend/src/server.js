@@ -1,7 +1,11 @@
 import express from 'express'
 import cors from 'cors'
 import { authenticate, isPublicPath } from './middleware/authenticate.js'
-import { createOpenaiLimiter, createGeneralLimiter } from './middleware/rateLimit.js'
+import {
+  createOpenaiLimiter,
+  createGeneralLimiter,
+  createAuthFailureLimiter
+} from './middleware/rateLimit.js'
 import { corsOptions, corsErrorHandler } from './config/corsOptions.js'
 import openaiRoutes from './routes/openai.js'
 import csvRoutes from './routes/csv.js'
@@ -30,6 +34,18 @@ app.use(express.json({ limit: '50mb' }))
 
 // Health check endpoint
 app.use('/api/health', healthRoutes)
+
+// 認証失敗（401）だけを IP 単位でカウントするブルートフォース対策のリミッター。
+// authenticate より前段に配置し、閾値超過 IP は authenticate 実行前に 429 で弾く。
+// 単一インスタンスを起動時に生成して共有する（MemoryStore を跨いだカウントを保つため）。
+const authFailureLimiter = createAuthFailureLimiter()
+
+app.use((req, res, next) => {
+  if (isPublicPath(req.path)) {
+    return next()
+  }
+  return authFailureLimiter(req, res, next)
+})
 
 // API認証（/api/health・/api/liff・バッチ専用エンドポイントは除外）
 app.use((req, res, next) => {
