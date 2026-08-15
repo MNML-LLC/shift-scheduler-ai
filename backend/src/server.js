@@ -7,6 +7,7 @@ import {
   createAuthFailureLimiter
 } from './middleware/rateLimit.js'
 import { corsOptions, corsErrorHandler } from './config/corsOptions.js'
+import { createErrorAlertMiddleware } from './middleware/errorAlert.js'
 import openaiRoutes from './routes/openai.js'
 import csvRoutes from './routes/csv.js'
 import masterRoutes from './routes/master.js'
@@ -31,6 +32,10 @@ app.set('trust proxy', 1)
 app.use(cors(corsOptions))
 app.use(corsErrorHandler)
 app.use(express.json({ limit: '50mb' }))
+
+// 5xx エラーを検知して Slack に fire-and-forget 通知するミドルウェア。
+// ルート登録より前段に配置し、res.on('finish') フックを全ルートに適用する。
+app.use(createErrorAlertMiddleware())
 
 // Health check endpoint
 app.use('/api/health', healthRoutes)
@@ -68,8 +73,11 @@ app.use('/api/holidays', holidaysRoutes)
 app.use('/api/liff', liffRoutes)
 
 // グローバルエラーハンドラ: DB リトライ枯渇時は 503 Service Unavailable を返却
+// 通知自体は errorAlert ミドルウェアが res.on('finish') で行うため、
+// ここでは res.locals.alertError に生のエラーを載せるだけに留める（責務分離）。
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
+  res.locals.alertError = err
   if (err instanceof DatabaseUnavailableError) {
     console.error('Database unavailable after retries:', err.cause)
     return res.status(503).json({
