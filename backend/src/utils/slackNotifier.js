@@ -85,3 +85,50 @@ export async function notifyShiftGenerationError(endpoint, error, params = {}) {
     return false
   }
 }
+
+/**
+ * バックエンド全般の 5xx エラーを Slack webhook に通知する（汎用）
+ *
+ * - webhook URL は SLACK_ERROR_WEBHOOK_URL を優先し、無ければ SLACK_WEBHOOK_URL にフォールバック
+ * - 両方未設定の場合は通知をスキップする（サーバーはエラーにしない）
+ * - リクエストボディ・トークン・PII は載せない。スタックは先頭3行のみ
+ * - 通知の失敗は内部でログに残すのみで、この関数は決して throw しない
+ *
+ * @param {Object} params
+ * @param {string} params.endpoint - 例: 'GET /api/foo/:id'
+ * @param {number} params.statusCode - HTTP ステータスコード
+ * @param {string} params.message - エラーメッセージ
+ * @param {string} [params.stack] - エラースタック（先頭3行のみ通知に載せる）
+ * @param {string} [params.timestamp] - ISO 形式の時刻文字列
+ * @returns {Promise<boolean>} - 通知を送信できた場合 true
+ */
+export async function notifyServerError({ endpoint, statusCode, message, stack, timestamp } = {}) {
+  const webhookUrl = process.env.SLACK_ERROR_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL
+
+  if (!webhookUrl) {
+    console.log('[SlackNotifier] SLACK_ERROR_WEBHOOK_URL / SLACK_WEBHOOK_URL 未設定のため通知をスキップします')
+    return false
+  }
+
+  const ts = timestamp || new Date().toISOString()
+  const stackHead = typeof stack === 'string' && stack.length > 0
+    ? stack.split('\n').slice(0, 3).join('\n')
+    : null
+
+  const lines = [
+    ':rotating_light: *バックエンド 5xx エラー*',
+    `*エンドポイント*: ${endpoint ?? '不明'}`,
+    `*ステータス*: ${statusCode ?? '不明'}`,
+    `*時刻*: ${ts}`,
+    `*エラーメッセージ*: ${message ?? '(なし)'}`,
+    stackHead ? `*スタック(先頭3行)*:\n\`\`\`\n${stackHead}\n\`\`\`` : null
+  ].filter(Boolean)
+
+  try {
+    await axios.post(webhookUrl, { text: lines.join('\n') }, { timeout: SLACK_TIMEOUT_MS })
+    return true
+  } catch (notifyError) {
+    console.error('[SlackNotifier] サーバーエラー通知の送信に失敗しました:', notifyError.message)
+    return false
+  }
+}

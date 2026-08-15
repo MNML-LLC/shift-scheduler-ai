@@ -986,6 +986,7 @@ router.post('/plans/generate', async (req, res, next) => {
       });
     }
 
+    res.locals.suppressGenericAlert = true;
     await notifyShiftGenerationError('POST /api/shifts/plans/generate', error, req.body);
 
     res.status(500).json({
@@ -1245,6 +1246,7 @@ router.get('/plans/generate-ai/stream', async (req, res) => {
     }
 
     console.error('[API] AI自動生成 (SSE) エラー:', error)
+    res.locals.suppressGenericAlert = true
     await notifyShiftGenerationError(
       'GET /api/shifts/plans/generate-ai/stream',
       error,
@@ -1455,6 +1457,7 @@ router.post('/plans/generate-ai', async (req, res, next) => {
     if (error instanceof DatabaseUnavailableError) return next(error);
     console.error('[API] AI自動生成エラー:', error);
 
+    res.locals.suppressGenericAlert = true;
     await notifyShiftGenerationError('POST /api/shifts/plans/generate-ai', error, req.body);
 
     // ShiftGenerationServiceからのエラー
