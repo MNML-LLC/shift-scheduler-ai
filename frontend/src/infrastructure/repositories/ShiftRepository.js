@@ -417,6 +417,55 @@ export class ShiftRepository {
   }
 
   /**
+   * シフトを確定（APPROVED → CONFIRMED）
+   * Issue #242 / #249: 管理者シフト確定機能
+   *
+   * バックエンドが `POST /api/shifts/plans/:planId/confirm` を叩き、
+   * status を CONFIRMED に更新した上で LIFF backend へ確定通知を送る。
+   *
+   * @param {number} planId - プランID
+   * @param {number|null} tenantId - テナントID
+   * @param {number|null} confirmedBy - 確定した管理者のstaff_id（当面NULL運用）
+   * @returns {Promise<Object>} 更新後のプランデータ
+   */
+  async confirmPlan(planId, tenantId = null, confirmedBy = null) {
+    try {
+      const actualTenantId = tenantId ?? getCurrentTenantId()
+
+      const url = `${BACKEND_API_URL}${API_ENDPOINTS.SHIFTS_PLANS}/${planId}/confirm`
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tenant_id: actualTenantId,
+          confirmed_by: confirmedBy,
+        }),
+      })
+
+      const result = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        const message = result?.error || `HTTP ${response.status}`
+        const err = new Error(message)
+        err.status = response.status
+        err.body = result
+        throw err
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || 'シフト確定に失敗しました')
+      }
+
+      return result.data
+    } catch (error) {
+      console.error('シフト確定エラー:', error)
+      throw error
+    }
+  }
+
+  /**
    * シフト計画のステータスを更新
    * @param {number} planId - プランID
    * @param {string} status - 新しいステータス (DRAFT/APPROVED)

@@ -64,6 +64,33 @@ async function notifyFirstPlanApproved({ tenant_id, store_id, plan_id, year, mon
 }
 
 /**
+ * LINE通知: シフト確定
+ * LIFF backend の通知エンドポイントを叩く共通ヘルパー
+ * （呼び出し元で process.env.LIFF_BACKEND_URL の有無を確認すること）
+ */
+async function notifyShiftConfirmed({ tenant_id, store_id, plan_id, year, month }) {
+  await axios.post(`${process.env.LIFF_BACKEND_URL}/api/notification/shift-confirmed`, {
+    tenant_id,
+    store_id,
+    plan_id,
+    year,
+    month
+  }, { timeout: 10000 });
+}
+
+/**
+ * 指定 plan_id の status を取得（存在しない場合は null）
+ */
+async function getPlanStatus(planId) {
+  const result = await query(
+    'SELECT status FROM ops.shift_plans WHERE plan_id = $1',
+    [planId]
+  );
+  if (result.rows.length === 0) return null;
+  return result.rows[0].status;
+}
+
+/**
  * シフトを取得する（共通関数）
  *
  * @param {number} tenantId - テナントID
@@ -1562,6 +1589,124 @@ router.post('/plans/approve-first', async (req, res, next) => {
 });
 
 /**
+ * シフト確定（管理者操作）
+ * POST /api/shifts/plans/:plan_id/confirm
+ *
+ * Issue #242 / #249: 管理者シフト確定・スタッフ確定通知
+ *
+ * 状態遷移: APPROVED → CONFIRMED（DRAFT からの直接遷移は不可）
+ * 本体はペイロード `{tenant_id, store_id, plan_id, year, month}` を
+ * LIFF バックエンドの POST /api/notification/shift-confirmed へ送るのみ。
+ * 通知文は LIFF 側で生成する。
+ *
+ * Request Body:
+ * - tenant_id: テナントID (default: 1)
+ * - confirmed_by: 確定した管理者のstaff_id (optional, 当面NULL運用)
+ *
+ * Response:
+ * - 200: 確定成功
+ * - 404: プラン未発見
+ * - 409: プランが APPROVED でない（DRAFT or CONFIRMED）
+ */
+router.post('/plans/:plan_id/confirm', async (req, res, next) => {
+  try {
+    const { plan_id } = req.params;
+    const { tenant_id = 1, confirmed_by = null } = req.body;
+
+    if (!plan_id) {
+      return res.status(400).json({
+        success: false,
+        error: MESSAGES.VALIDATION.PLAN_ID_REQUIRED
+      });
+    }
+
+    // プランの詳細を取得
+    const planCheck = await query(
+      `SELECT plan_id, tenant_id, store_id, plan_year, plan_month, plan_type, status
+       FROM ops.shift_plans
+       WHERE plan_id = $1 AND tenant_id = $2`,
+      [plan_id, tenant_id]
+    );
+
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: MESSAGES.NOT_FOUND.SHIFT_PLAN_NOT_FOUND
+      });
+    }
+
+    const plan = planCheck.rows[0];
+
+    // すでに確定済みは409
+    if (plan.status === 'CONFIRMED') {
+      return res.status(409).json({
+        success: false,
+        error: MESSAGES.CONFLICT.PLAN_ALREADY_CONFIRMED,
+        current_status: plan.status
+      });
+    }
+
+    // APPROVED でないものは確定不可
+    if (plan.status !== 'APPROVED') {
+      return res.status(409).json({
+        success: false,
+        error: MESSAGES.CONFLICT.PLAN_NOT_APPROVED,
+        current_status: plan.status
+      });
+    }
+
+    // ステータスを CONFIRMED に更新
+    // confirmed_by は当面 NULL 運用（M層決定事項）
+    await query(
+      `UPDATE ops.shift_plans
+       SET status = 'CONFIRMED',
+           approved_by = COALESCE($1, approved_by),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE plan_id = $2`,
+      [confirmed_by, plan_id]
+    );
+
+    // LIFF backend へ通知（NOTIFICATION_ENABLED=true かつ LIFF_BACKEND_URL 設定時のみ）
+    let notificationSent = false;
+    if (isLineNotificationEnabled() && process.env.LIFF_BACKEND_URL) {
+      try {
+        await notifyShiftConfirmed({
+          tenant_id: plan.tenant_id,
+          store_id: plan.store_id,
+          plan_id: parseInt(plan_id, 10),
+          year: plan.plan_year,
+          month: plan.plan_month
+        });
+        notificationSent = true;
+        console.log('LINE shift-confirmed notification sent');
+      } catch (notifyError) {
+        // 通知失敗は確定処理に影響させない（ログのみ）
+        console.error('Failed to send shift-confirmed notification:', notifyError.message);
+      }
+    } else if (!isLineNotificationEnabled()) {
+      console.log('shift-confirmed notification skipped: NOTIFICATION_ENABLED is not "true"');
+    }
+
+    res.json({
+      success: true,
+      message: MESSAGES.SUCCESS.SHIFT_CONFIRMED,
+      data: {
+        plan_id: parseInt(plan_id, 10),
+        status: 'CONFIRMED',
+        notification_sent: notificationSent
+      }
+    });
+  } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
+    console.error('Error confirming shift plan:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * 月次第一案バッチ（空プラン一括作成 + 承認 + LINE通知）
  * POST /api/shifts/plans/monthly-first-plan-batch
  *
@@ -2701,6 +2846,16 @@ router.post('/', async (req, res, next) => {
       });
     }
 
+    // 確定済みプランへのシフト追加は 409 で拒否（Issue #242 / #249）
+    const planStatus = await getPlanStatus(plan_id);
+    if (planStatus === 'CONFIRMED') {
+      return res.status(409).json({
+        success: false,
+        error: MESSAGES.CONFLICT.PLAN_ALREADY_CONFIRMED,
+        code: 'PLAN_CONFIRMED'
+      });
+    }
+
     // 時間重複チェック（Issue #165: 複数店舗横断シフト対応）
     // 同じplan_id内でのみチェック（第一案と第二案は別々にチェック）
     const overlapResult = await validateShiftTimeOverlap({
@@ -2864,6 +3019,16 @@ router.put('/:id', async (req, res, next) => {
     }
 
     const existingShift = existingResult.rows[0];
+
+    // 確定済みプランのシフト更新は 409 で拒否（Issue #242 / #249）
+    const planStatusForUpdate = await getPlanStatus(existingShift.plan_id);
+    if (planStatusForUpdate === 'CONFIRMED') {
+      return res.status(409).json({
+        success: false,
+        error: MESSAGES.CONFLICT.PLAN_ALREADY_CONFIRMED,
+        code: 'PLAN_CONFIRMED'
+      });
+    }
 
     // リクエストボディから更新項目を取得
     const {
@@ -3120,7 +3285,7 @@ router.delete('/:id', async (req, res, next) => {
 
     // 削除前に存在確認とtenant_idチェック
     const existingResult = await query(
-      'SELECT shift_id, staff_id, shift_date, start_time, end_time FROM ops.shifts WHERE shift_id = $1 AND tenant_id = $2',
+      'SELECT shift_id, staff_id, shift_date, start_time, end_time, plan_id FROM ops.shifts WHERE shift_id = $1 AND tenant_id = $2',
       [id, tenant_id]
     );
 
@@ -3132,6 +3297,16 @@ router.delete('/:id', async (req, res, next) => {
     }
 
     const deletedShift = existingResult.rows[0];
+
+    // 確定済みプランのシフト削除は 409 で拒否（Issue #242 / #249）
+    const planStatusForDelete = await getPlanStatus(deletedShift.plan_id);
+    if (planStatusForDelete === 'CONFIRMED') {
+      return res.status(409).json({
+        success: false,
+        error: MESSAGES.CONFLICT.PLAN_ALREADY_CONFIRMED,
+        code: 'PLAN_CONFIRMED'
+      });
+    }
 
     // シフトを削除（物理削除）
     await query(
@@ -3313,6 +3488,18 @@ router.put('/plans/:plan_id/status', async (req, res, next) => {
       });
     }
 
+    const plan = planCheck.rows[0];
+
+    // CONFIRMED からの巻き戻しは 409 で拒否（Issue #242 / #249: 確定解除は今回スコープ外）
+    if (plan.status === 'CONFIRMED' && status !== 'CONFIRMED') {
+      return res.status(409).json({
+        success: false,
+        error: MESSAGES.CONFLICT.CONFIRMED_CANNOT_REVERT,
+        current_status: plan.status,
+        requested_status: status
+      });
+    }
+
     // ステータスを更新
     await query(
       `UPDATE ops.shift_plans
@@ -3321,8 +3508,6 @@ router.put('/plans/:plan_id/status', async (req, res, next) => {
        RETURNING plan_id, store_id, plan_year, plan_month, plan_type, status`,
       [status, plan_id]
     );
-
-    const plan = planCheck.rows[0];
 
     // 第1案がAPPROVEDになった場合、LINE通知を送信（シフト希望入力開始）
     // NOTIFICATION_ENABLED=true かつ LIFF_BACKEND_URL 設定時のみ送信

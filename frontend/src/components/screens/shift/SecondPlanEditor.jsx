@@ -741,7 +741,7 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
     try {
       setConfirming(true)
       for (const id of planIdsState) {
-        await shiftRepository.updatePlanStatus(id, 'CONFIRMED')
+        await shiftRepository.confirmPlan(id)
       }
       setPlanStatus('CONFIRMED')
       alert(MESSAGES.SUCCESS.CONFIRM_SHIFT)

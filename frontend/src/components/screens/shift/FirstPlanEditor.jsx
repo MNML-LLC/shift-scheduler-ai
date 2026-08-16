@@ -5,6 +5,7 @@ import { Button } from '../../ui/button'
 import {
   CheckCircle,
   Loader2,
+  Lock,
   Save,
   Trash2,
   Download,
@@ -138,6 +139,12 @@ const FirstPlanEditor = ({
     updateCalendarData,
   } = editor
 
+  // 第1案プランのステータス集約 ('DRAFT' | 'APPROVED' | 'CONFIRMED' | null)
+  // Issue #242 / #249: 第2案が存在しない店舗の第1案に対して「確定」ボタンを出すために追跡
+  const [planStatus, setPlanStatus] = useState(null)
+  const [hasSecondPlan, setHasSecondPlan] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+
   // FirstPlanEditor特有のデータ読み込み
   useEffect(() => {
     // initialDataがある場合はそれを使用、ない場合はDBからロード
@@ -246,6 +253,26 @@ const FirstPlanEditor = ({
       // shift_plansから直接planIdsを取得（shiftsが0件でも取得可能）
       const firstPlans = plansResult.filter(p => p.plan_type === 'FIRST')
       const fetchedPlanIds = firstPlans.map(p => p.plan_id)
+
+      // 第1案のステータスを集約: すべて CONFIRMED なら CONFIRMED、
+      // すべて APPROVED なら APPROVED、それ以外は DRAFT
+      // Issue #242 / #249: 第1案の「確定」ボタン表示判定に使用
+      if (firstPlans.length > 0) {
+        const statuses = new Set(firstPlans.map(p => p.status?.toUpperCase()).filter(Boolean))
+        if (statuses.size === 1) {
+          setPlanStatus([...statuses][0])
+        } else if (statuses.has('DRAFT')) {
+          setPlanStatus('DRAFT')
+        } else {
+          setPlanStatus('APPROVED')
+        }
+      } else {
+        setPlanStatus(null)
+      }
+
+      // 第2案の有無を判定（存在すれば FirstPlanEditor の確定ボタンは非表示）
+      const secondPlans = plansResult.filter(p => p.plan_type === 'SECOND')
+      setHasSecondPlan(secondPlans.length > 0)
 
       // ステートに保存
       setDefaultPatternId(fetchedPatternId)
@@ -529,6 +556,44 @@ const FirstPlanEditor = ({
     } catch (error) {
       console.error('承認処理エラー:', error)
       alert(`${MESSAGES.ERROR.SAVE_APPROVE_FAILED}\n\nエラー: ${error.message}`)
+    }
+  }
+
+  // シフト確定ハンドラー（第2案が存在しない店舗のみ第1案から確定できる）
+  // Issue #242 / #249: CONFIRMED ステータスへ遷移、全スタッフにLINE通知
+  const handleConfirm = async () => {
+    if (planIdsState.length === 0) {
+      alert('確定できるプランが見つかりません')
+      return
+    }
+
+    if (planStatus !== 'APPROVED') {
+      alert('シフトを確定するには、まず第1案を承認してください')
+      return
+    }
+
+    if (hasSecondPlan) {
+      alert('この月には第2案が存在します。第2案画面から確定してください。')
+      return
+    }
+
+    if (!window.confirm(MESSAGES.WARNING.CONFIRM_SHIFT)) {
+      return
+    }
+
+    try {
+      setConfirming(true)
+      for (const id of planIdsState) {
+        await shiftRepository.confirmPlan(id)
+      }
+      setPlanStatus('CONFIRMED')
+      alert(MESSAGES.SUCCESS.CONFIRM_SHIFT)
+      await loadShiftData()
+    } catch (error) {
+      console.error('シフト確定エラー:', error)
+      alert(`${MESSAGES.ERROR.SHIFT_CONFIRM_FAILED}\n\nエラー: ${error.message}`)
+    } finally {
+      setConfirming(false)
     }
   }
 
@@ -1169,6 +1234,42 @@ const FirstPlanEditor = ({
                     )}
                     {saving ? '保存中...' : '保存'}
                   </Button>
+                  {/*
+                   * シフト確定ボタン（Issue #242 / #249）:
+                   * 第1案が APPROVED かつ 第2案が存在しない店舗・月にのみ表示。
+                   * 第2案が存在する場合は SecondPlanEditor 側で確定操作を行う。
+                   */}
+                  {planStatus === 'APPROVED' && !hasSecondPlan && (
+                    <Button
+                      size="sm"
+                      onClick={handleConfirm}
+                      disabled={confirming || saving || hasUnsavedChanges}
+                      className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                      title={
+                        hasUnsavedChanges
+                          ? '未保存の変更があります。先に保存してください'
+                          : 'シフトを確定して全スタッフにLINE通知を送信します'
+                      }
+                    >
+                      {confirming ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Lock className="h-4 w-4 mr-1" />
+                      )}
+                      {confirming ? '確定中...' : 'シフトを確定する'}
+                    </Button>
+                  )}
+                  {planStatus === 'CONFIRMED' && !hasSecondPlan && (
+                    <Button
+                      size="sm"
+                      disabled
+                      className="bg-gray-400 text-white cursor-not-allowed opacity-80"
+                      title="このシフトは確定済みです"
+                    >
+                      <Lock className="h-4 w-4 mr-1" />
+                      確定済み
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"

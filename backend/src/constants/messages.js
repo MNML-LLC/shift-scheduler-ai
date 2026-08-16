@@ -10,6 +10,7 @@ export const MESSAGES = {
     SHIFT_UPDATED: 'シフトを更新しました',
     SHIFT_DELETED: 'シフトを削除しました',
     FIRST_PLAN_APPROVED: '第1案を承認しました',
+    SHIFT_CONFIRMED: 'シフトを確定しました',
     SHIFT_PREFERENCE_CREATED: 'シフト希望を登録しました',
     SHIFT_PREFERENCE_UPDATED: 'シフト希望を更新しました',
     SHIFT_PREFERENCE_DELETED: 'シフト希望を削除しました',
@@ -68,6 +69,9 @@ export const MESSAGES = {
   CONFLICT: {
     SHIFT_PLAN_EXISTS: '指定した年月のシフト計画は既に存在します',
     SHIFT_PREFERENCE_EXISTS: '指定したスタッフ・日付のシフト希望は既に存在します',
+    PLAN_ALREADY_CONFIRMED: 'このシフトは確定済みのため編集できません',
+    PLAN_NOT_APPROVED: 'シフトを確定するには、まずプランを承認（APPROVED）してください',
+    CONFIRMED_CANNOT_REVERT: '確定済み（CONFIRMED）のプランは他のステータスに戻せません',
   },
 
   // システムエラー
