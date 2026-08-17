@@ -8,8 +8,12 @@ updates:
       time: '09:00'
       timezone: 'Asia/Tokyo'
     open-pull-requests-limit: 10
-    # メジャーバージョンアップ時に package-lock.json が未同期のまま PR が作られる問題（Issue #223, #126）
-    # の対策として versioning-strategy を明示。npm では自動的に lockfile も更新される。
+    # versioning-strategy: 'increase' で package.json の SemVer 範囲を上げつつ lockfile も更新する
+    # 前提となる Issue: #126, #223, #267
+    # 注意: frontend/package.json に `packageManager` フィールドを追加してはいけない。
+    # Corepack が有効な Dependabot コンテナで npm の起動を拒否し、lockfile が未同期のまま
+    # manifest-only の PR が生成される（#267 で再発したのが原因）。実運用は npm なので
+    # package-lock.json を SoT として維持する。
     versioning-strategy: 'increase'
     commit-message:
       prefix: 'chore'
