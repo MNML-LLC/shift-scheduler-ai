@@ -3,7 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
-import { Users, X, TrendingUp, Award, FileText, Database, Filter, Home } from 'lucide-react'
+import { Input } from '../ui/input'
+import {
+  Users,
+  X,
+  TrendingUp,
+  Award,
+  FileText,
+  Database,
+  Filter,
+  Home,
+  Search,
+  ArrowUpDown,
+} from 'lucide-react'
 import { calculatePayslip } from '../../utils/salaryCalculator'
 import { MasterRepository } from '../../infrastructure/repositories/MasterRepository'
 import { BACKEND_API_URL, API_ENDPOINTS } from '../../config/api'
@@ -31,6 +43,8 @@ const StaffManagement = () => {
   const [selectedStore, setSelectedStore] = useState('all')
   const [statusFilter, setStatusFilter] = useState('active') // 'all', 'active', 'inactive' - デフォルト在籍のみ
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState('all') // 'all', 'PART_TIME', 'FULL_TIME', etc.
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('name') // 'name' (50音順) / 'hire_date' / 'staff_code'
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -182,34 +196,76 @@ const StaffManagement = () => {
     return employmentTypeData ? employmentTypeData.employment_name : employmentType
   }
 
-  // 店舗フィルタリング + 在籍状況フィルタリング + 契約タイプフィルタリング
-  const filteredStaffList = staffList.filter(staff => {
-    // 店舗フィルター
-    const storeMatch = selectedStore === 'all' || staff.store_id === parseInt(selectedStore)
+  // 店舗フィルタリング + 在籍状況フィルタリング + 契約タイプフィルタリング + 名前検索
+  const filteredStaffList = staffList
+    .filter(staff => {
+      // 店舗フィルター
+      const storeMatch = selectedStore === 'all' || staff.store_id === parseInt(selectedStore)
 
-    // 在籍状況フィルター
-    let statusMatch = true
-    if (statusFilter === 'active') {
-      statusMatch = staff.is_active === true
-    } else if (statusFilter === 'inactive') {
-      statusMatch = staff.is_active === false
-    }
-
-    // 契約タイプフィルター
-    let employmentMatch = true
-    if (employmentTypeFilter !== 'all') {
-      if (employmentTypeFilter === 'PART_TIME') {
-        employmentMatch = staff.employment_type === 'PART_TIME' || staff.employment_type === 'PART'
-      } else if (employmentTypeFilter === 'FULL_TIME') {
-        employmentMatch =
-          staff.employment_type === 'FULL_TIME' || staff.employment_type === 'REGULAR'
-      } else {
-        employmentMatch = staff.employment_type === employmentTypeFilter
+      // 在籍状況フィルター
+      let statusMatch = true
+      if (statusFilter === 'active') {
+        statusMatch = staff.is_active === true
+      } else if (statusFilter === 'inactive') {
+        statusMatch = staff.is_active === false
       }
-    }
 
-    return storeMatch && statusMatch && employmentMatch
-  })
+      // 契約タイプフィルター
+      let employmentMatch = true
+      if (employmentTypeFilter !== 'all') {
+        if (employmentTypeFilter === 'PART_TIME') {
+          employmentMatch =
+            staff.employment_type === 'PART_TIME' || staff.employment_type === 'PART'
+        } else if (employmentTypeFilter === 'FULL_TIME') {
+          employmentMatch =
+            staff.employment_type === 'FULL_TIME' || staff.employment_type === 'REGULAR'
+        } else {
+          employmentMatch = staff.employment_type === employmentTypeFilter
+        }
+      }
+
+      // 名前検索フィルター（name / name_kana / staff_code の部分一致）
+      let searchMatch = true
+      const trimmedQuery = searchQuery.trim().toLowerCase()
+      if (trimmedQuery) {
+        const name = (staff.name || '').toLowerCase()
+        const nameKana = (staff.name_kana || '').toLowerCase()
+        const staffCode = (staff.staff_code || '').toLowerCase()
+        searchMatch =
+          name.includes(trimmedQuery) ||
+          nameKana.includes(trimmedQuery) ||
+          staffCode.includes(trimmedQuery)
+      }
+
+      return storeMatch && statusMatch && employmentMatch && searchMatch
+    })
+    .sort((a, b) => {
+      if (sortBy === 'hire_date') {
+        // 空値は末尾にまわす
+        const aDate = a.hire_date || ''
+        const bDate = b.hire_date || ''
+        if (!aDate && !bDate) return 0
+        if (!aDate) return 1
+        if (!bDate) return -1
+        return aDate.localeCompare(bDate)
+      }
+      if (sortBy === 'staff_code') {
+        return (a.staff_code || '').localeCompare(b.staff_code || '', 'ja', { numeric: true })
+      }
+      // 既定: 名前50音順（name_kana があれば優先）
+      const aKey = a.name_kana || a.name || ''
+      const bKey = b.name_kana || b.name || ''
+      return aKey.localeCompare(bKey, 'ja')
+    })
+
+  const isFilterActive =
+    searchQuery.trim() !== '' || selectedStore !== 'all' || employmentTypeFilter !== 'all'
+
+  const clearFilters = () => {
+    setSearchQuery('')
+    setSelectedStore('all')
+    setEmploymentTypeFilter('all')
+  }
 
   if (loading) {
     return (
@@ -1166,7 +1222,7 @@ const StaffManagement = () => {
                     <div className="flex flex-col flex-1 min-h-0">
                       {/* 固定ヘッダー部分 */}
                       <div className="px-6 py-4 bg-white border-b border-gray-200 flex-shrink-0">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
                           <div className="flex items-center gap-4">
                             <Button
                               variant="outline"
@@ -1182,11 +1238,36 @@ const StaffManagement = () => {
                               スタッフ一覧 ({filteredStaffList.length}名)
                             </h3>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="relative">
+                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                              <Input
+                                type="search"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder="名前で検索"
+                                aria-label="スタッフ名で検索"
+                                className="pl-8 w-56 h-9 text-sm bg-white"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <ArrowUpDown className="h-4 w-4 text-gray-600" />
+                              <select
+                                value={sortBy}
+                                onChange={e => setSortBy(e.target.value)}
+                                aria-label="並び順"
+                                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                              >
+                                <option value="name">名前（50音順）</option>
+                                <option value="hire_date">雇用開始日</option>
+                                <option value="staff_code">スタッフコード</option>
+                              </select>
+                            </div>
                             <Filter className="h-4 w-4 text-gray-600" />
                             <select
                               value={statusFilter}
                               onChange={e => setStatusFilter(e.target.value)}
+                              aria-label="在籍状態フィルター"
                               className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                             >
                               <option value="all">全ての状態</option>
@@ -1196,6 +1277,7 @@ const StaffManagement = () => {
                             <select
                               value={selectedStore}
                               onChange={e => setSelectedStore(e.target.value)}
+                              aria-label="店舗フィルター"
                               className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                             >
                               <option value="all">全ての店舗</option>
@@ -1208,6 +1290,7 @@ const StaffManagement = () => {
                             <select
                               value={employmentTypeFilter}
                               onChange={e => setEmploymentTypeFilter(e.target.value)}
+                              aria-label="雇用形態フィルター"
                               className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                             >
                               <option value="all">全ての契約</option>
@@ -1215,6 +1298,16 @@ const StaffManagement = () => {
                               <option value="FULL_TIME">正社員</option>
                               <option value="CONTRACT">契約社員</option>
                             </select>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={clearFilters}
+                              disabled={!isFilterActive}
+                              className="flex items-center gap-1"
+                            >
+                              <X className="h-4 w-4" />
+                              クリア
+                            </Button>
                           </div>
                         </div>
                       </div>
