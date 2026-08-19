@@ -30,6 +30,7 @@ import MultiStoreShiftTable from '../../shared/MultiStoreShiftTable'
 import ShiftTableView from '../../shared/ShiftTableView'
 import TimeInput from '../../shared/TimeInput'
 import AIShiftGenerator from './AIShiftGenerator'
+import { LoadingSpinner } from '../../ui/LoadingSpinner'
 import { ShiftRepository } from '../../../infrastructure/repositories/ShiftRepository'
 import { MasterRepository } from '../../../infrastructure/repositories/MasterRepository'
 import { getCurrentTenantId } from '../../../config/tenant'
@@ -1554,8 +1555,7 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
         className={`h-screen flex flex-col px-4 py-8 ${isMobile ? 'overflow-auto' : 'overflow-hidden'}`}
       >
         <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
-          <p className="text-lg text-gray-600">データを読み込んでいます...</p>
+          <LoadingSpinner size="lg" label="データを読み込んでいます..." />
         </div>
       </motion.div>
     )

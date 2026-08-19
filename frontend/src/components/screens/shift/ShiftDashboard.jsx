@@ -17,17 +17,9 @@ import { BACKEND_API_URL } from '../../../config/api'
 import { ShiftRepository } from '../../../infrastructure/repositories/ShiftRepository'
 import Sidebar from '../../Sidebar'
 import ShiftStatusCards from '../../ShiftStatusCards'
+import { LoadingSpinner } from '../../ui/LoadingSpinner'
 
 const shiftRepository = new ShiftRepository()
-
-/**
- * ローディングスピナー
- */
-const Spinner = () => (
-  <div className="flex items-center justify-center">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-  </div>
-)
 
 /**
  * シフトダッシュボードコンポーネント
@@ -329,7 +321,7 @@ const ShiftDashboard = ({ onStaffManagement }) => {
         {/* カードエリア */}
         <div className="flex-1 p-4 md:p-6 overflow-auto flex items-center justify-center">
           {loading ? (
-            <Spinner />
+            <LoadingSpinner size="lg" />
           ) : (
             <ShiftStatusCards
               recruitmentStatus={recruitmentStatusWithStats}
