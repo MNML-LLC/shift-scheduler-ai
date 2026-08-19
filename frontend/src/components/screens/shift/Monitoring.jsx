@@ -10,13 +10,13 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   X,
   Calendar,
   Store,
   Home,
 } from 'lucide-react'
 import ShiftTimeline from '../../shared/ShiftTimeline'
+import { LoadingSpinner } from '../../ui/LoadingSpinner'
 import { AnimatePresence } from 'framer-motion'
 import { useTenant } from '../../../contexts/TenantContext'
 import { isoToJSTDateString, isoToJSTDateParts } from '../../../utils/dateUtils'
@@ -504,10 +504,7 @@ const Monitoring = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">データを読み込み中...</p>
-        </div>
+        <LoadingSpinner size="lg" label="データを読み込み中..." />
       </div>
     )
   }
