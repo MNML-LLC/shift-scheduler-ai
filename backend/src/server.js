@@ -20,6 +20,7 @@ import liffRoutes from './routes/liff.js'
 import healthRoutes from './routes/health.js'
 import { appendLog } from './utils/logger.js'
 import { ensureShiftPlansUniqueConstraint } from './migrations/ensureShiftPlansUniqueConstraint.js'
+import { ensureShiftPlansStatusCheck } from './migrations/ensureShiftPlansStatusCheck.js'
 import { DatabaseUnavailableError } from './config/database.js'
 
 const app = express()
@@ -93,6 +94,7 @@ async function startServer() {
   try {
     // 本番DBのスキーマドリフト補完（起動時に冪等実行、失敗しても起動は継続）
     await ensureShiftPlansUniqueConstraint()
+    await ensureShiftPlansStatusCheck()
 
     // サーバー起動
     app.listen(PORT, '0.0.0.0', () => {
