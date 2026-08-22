@@ -2191,6 +2191,110 @@ router.get('/preferences', async (req, res, next) => {
 });
 
 /**
+ * シフト希望 提出状況一覧取得
+ * GET /api/shifts/preferences/submission-status
+ *
+ * 対象月の shift_preferences を staff LEFT JOIN で突き合わせ、
+ * 全アクティブスタッフの提出/未提出を返す。
+ *
+ * Query Parameters:
+ * - tenant_id: テナントID (required)
+ * - year: 対象年 (required)
+ * - month: 対象月 (required)
+ * - store_id: 店舗ID (optional, staff.store_id で絞り込み)
+ *
+ * Response:
+ * {
+ *   success: true,
+ *   data: [ { staff_id, staff_name, employment_type, store_id, submitted, submitted_dates_count } ],
+ *   summary: { total, submitted, unsubmitted, submission_rate }
+ * }
+ */
+router.get('/preferences/submission-status', async (req, res, next) => {
+  try {
+    const { tenant_id, year, month, store_id } = req.query;
+
+    if (!tenant_id || !year || !month) {
+      return res.status(400).json({
+        success: false,
+        error: MESSAGES.VALIDATION.TENANT_YEAR_MONTH_REQUIRED,
+      });
+    }
+
+    const yearNum = parseInt(year, 10);
+    const monthNum = parseInt(month, 10);
+
+    if (!Number.isFinite(yearNum) || yearNum < 2000 || yearNum > 2100) {
+      return res.status(400).json({
+        success: false,
+        error: MESSAGES.VALIDATION.INVALID_YEAR_RANGE,
+      });
+    }
+    if (!Number.isFinite(monthNum) || monthNum < 1 || monthNum > 12) {
+      return res.status(400).json({
+        success: false,
+        error: MESSAGES.VALIDATION.INVALID_MONTH_RANGE,
+      });
+    }
+
+    let sql = `
+      SELECT
+        staff.staff_id,
+        staff.name AS staff_name,
+        staff.employment_type,
+        staff.store_id,
+        COUNT(pref.preference_id)::int AS submitted_dates_count,
+        (COUNT(pref.preference_id) > 0) AS submitted
+      FROM hr.staff staff
+      LEFT JOIN ops.shift_preferences pref
+        ON pref.staff_id = staff.staff_id
+        AND pref.tenant_id = staff.tenant_id
+        AND EXTRACT(YEAR FROM pref.preference_date) = $2
+        AND EXTRACT(MONTH FROM pref.preference_date) = $3
+      WHERE staff.tenant_id = $1
+        AND staff.is_active = true
+    `;
+    const params = [tenant_id, yearNum, monthNum];
+
+    if (store_id) {
+      sql += ` AND staff.store_id = $4`;
+      params.push(store_id);
+    }
+
+    sql += `
+      GROUP BY staff.staff_id, staff.name, staff.employment_type, staff.store_id
+      ORDER BY staff.name ASC
+    `;
+
+    const result = await query(sql, params);
+    const rows = result.rows;
+
+    const total = rows.length;
+    const submittedCount = rows.filter((r) => r.submitted).length;
+    const summary = {
+      total,
+      submitted: submittedCount,
+      unsubmitted: total - submittedCount,
+      submission_rate: total === 0 ? 0 : submittedCount / total,
+    };
+
+    res.json({
+      success: true,
+      data: rows,
+      count: rows.length,
+      summary,
+    });
+  } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
+    console.error('Error fetching preferences submission status:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
  * シフト希望詳細取得
  * GET /api/shifts/preferences/:id
  */

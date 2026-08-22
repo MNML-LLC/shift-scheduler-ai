@@ -19,6 +19,7 @@ import ConstraintManagement from './components/screens/ConstraintManagement'
 import ShiftDashboard from './components/screens/shift/ShiftDashboard'
 import BudgetActualManagement from './components/screens/BudgetActualManagement'
 import MasterDataManagement from './components/screens/MasterDataManagement'
+import PreferencesSubmissionStatus from './components/screens/PreferencesSubmissionStatus'
 import DevTools from './dev/DevTools'
 
 // UI Components
@@ -44,6 +45,7 @@ function AppContent() {
   const [showMonitoring, setShowMonitoring] = useState(false)
   const [showBudgetActualManagement, setShowBudgetActualManagement] = useState(false)
   const [showMasterDataManagement, setShowMasterDataManagement] = useState(false)
+  const [showPreferencesSubmissionStatus, setShowPreferencesSubmissionStatus] = useState(false)
   const [showDevTools, setShowDevTools] = useState(false)
   const [showTenantSettings, setShowTenantSettings] = useState(false)
   const [selectedShiftForEdit, setSelectedShiftForEdit] = useState(null)
@@ -70,6 +72,7 @@ function AppContent() {
       setShowMonitoring(false)
       setShowBudgetActualManagement(false)
       setShowMasterDataManagement(false)
+      setShowPreferencesSubmissionStatus(false)
       setShowDevTools(false)
       setShowTenantSettings(false)
     }
@@ -96,6 +99,9 @@ function AppContent() {
     } else if (path === '/shift/monitoring') {
       resetAllFlags()
       setShowMonitoring(true)
+    } else if (path === '/shift/preferences-submission-status') {
+      resetAllFlags()
+      setShowPreferencesSubmissionStatus(true)
     } else if (path === '/constraint') {
       resetAllFlags()
       setShowConstraintManagement(true)
@@ -134,6 +140,8 @@ function AppContent() {
       navigate('/shift/line', { replace: true })
     } else if (showMonitoring) {
       navigate('/shift/monitoring', { replace: true })
+    } else if (showPreferencesSubmissionStatus) {
+      navigate('/shift/preferences-submission-status', { replace: true })
     } else if (showConstraintManagement) {
       navigate('/constraint', { replace: true })
     } else if (showDraftShiftEditor) {
@@ -157,6 +165,7 @@ function AppContent() {
       !showShiftCreationMethodSelector &&
       !showDevTools &&
       !showTenantSettings &&
+      !showPreferencesSubmissionStatus &&
       currentStep === 1
     ) {
       navigate('/', { replace: true })
@@ -174,6 +183,7 @@ function AppContent() {
     showShiftCreationMethodSelector,
     showDevTools,
     showTenantSettings,
+    showPreferencesSubmissionStatus,
     currentStep,
     navigate,
   ])
@@ -291,6 +301,26 @@ function AppContent() {
     setShowTenantSettings(false)
   }
 
+  const goToPreferencesSubmissionStatus = () => {
+    if (hasUnsavedChanges) {
+      if (!window.confirm('変更が保存されていません。提出状況ダッシュボードに移動しますか？')) {
+        return
+      }
+      setHasUnsavedChanges(false)
+    }
+    setShowPreferencesSubmissionStatus(true)
+    setShowShiftDashboard(false)
+    setShowStaffManagement(false)
+    setShowStoreManagement(false)
+    setShowConstraintManagement(false)
+    setShowLineMessages(false)
+    setShowMonitoring(false)
+    setShowBudgetActualManagement(false)
+    setShowMasterDataManagement(false)
+    setShowDevTools(false)
+    setShowTenantSettings(false)
+  }
+
   const goToMasterDataManagement = () => {
     if (hasUnsavedChanges) {
       if (!window.confirm('変更が保存されていません。マスターデータ管理に移動しますか？')) {
@@ -329,6 +359,7 @@ function AppContent() {
     setShowMonitoring(false)
     setShowBudgetActualManagement(false)
     setShowMasterDataManagement(false)
+    setShowPreferencesSubmissionStatus(false)
     setShowDevTools(false)
     setShowTenantSettings(false)
 
@@ -598,6 +629,10 @@ function AppContent() {
       return <MasterDataManagement onPrev={goToShiftDashboard} />
     }
 
+    if (showPreferencesSubmissionStatus) {
+      return <PreferencesSubmissionStatus />
+    }
+
     if (showDevTools) {
       return (
         <DevTools
@@ -652,6 +687,7 @@ function AppContent() {
         onConstraintManagement={goToConstraintManagement}
         onBudgetActualManagement={goToBudgetActualManagement}
         onMasterDataManagement={goToMasterDataManagement}
+        onPreferencesSubmissionStatus={goToPreferencesSubmissionStatus}
       />
       <div className="flex-1 overflow-x-hidden w-full max-w-full">
         <AnimatePresence mode="wait">

@@ -793,6 +793,48 @@ export class ShiftRepository {
   }
 
   /**
+   * シフト希望 提出状況一覧を取得
+   * 全アクティブスタッフに対して、対象月の shift_preferences レコード有無で提出/未提出を判定
+   * @param {Object} filters - フィルタリング条件
+   * @param {number} filters.tenantId - テナントID
+   * @param {number} filters.year - 年 (required)
+   * @param {number} filters.month - 月 (required)
+   * @param {number} filters.storeId - 店舗ID (オプション、staff.store_id で絞り込み)
+   * @returns {Promise<{data: Array, summary: Object}>} 提出状況データと集計
+   */
+  async getPreferencesSubmissionStatus(filters = {}) {
+    const { tenantId = null, year, month, storeId } = filters
+
+    const actualTenantId = tenantId ?? getCurrentTenantId()
+
+    if (!year || !month) {
+      throw new Error('Year and month parameters are required')
+    }
+
+    const params = new URLSearchParams({
+      tenant_id: actualTenantId,
+      year,
+      month,
+    })
+    if (storeId) params.append('store_id', storeId)
+
+    const url = `${BACKEND_API_URL}${API_ENDPOINTS.SHIFTS_PREFERENCES_SUBMISSION_STATUS}?${params}`
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error || '提出状況取得に失敗しました')
+    }
+
+    return { data: result.data || [], summary: result.summary || null }
+  }
+
+  /**
    * シフト希望入力締切設定を取得
    * @param {number} tenantId - テナントID
    * @returns {Promise<Array>} 締切設定データ配列

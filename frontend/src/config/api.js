@@ -33,6 +33,7 @@ export const API_ENDPOINTS = {
   SHIFTS_PLANS: '/api/shifts/plans',
   SHIFTS_SUMMARY: '/api/shifts/summary',
   SHIFTS_PREFERENCES: '/api/shifts/preferences',
+  SHIFTS_PREFERENCES_SUBMISSION_STATUS: '/api/shifts/preferences/submission-status',
 
   // Master Data API
   MASTER_STAFF: '/api/master/staff',
