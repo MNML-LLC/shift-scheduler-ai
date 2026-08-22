@@ -15,6 +15,7 @@ import {
   Building2,
   Database,
   BookOpen,
+  ClipboardCheck,
   Menu,
   X,
 } from 'lucide-react'
@@ -119,6 +120,7 @@ const AppHeader = () => {
 
   const menuItems = [
     { label: 'LINE', icon: MessageSquare, path: '/shift/line' },
+    { label: '提出状況', icon: ClipboardCheck, path: '/shift/preferences-submission-status' },
     { label: 'スタッフ管理', icon: Users, path: '/staff' },
     { label: '店舗管理', icon: Store, path: '/store' },
     { label: '予実管理', icon: TrendingUp, path: '/budget-actual' },
