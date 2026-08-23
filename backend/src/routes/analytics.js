@@ -96,6 +96,88 @@ router.get('/payroll', async (req, res, next) => {
 });
 
 /**
+ * スタッフ別月次稼働時間サマリー取得
+ * GET /api/analytics/work-hours-summary
+ *
+ * hr.payroll.work_hours を staff_id 単位で SUM し、160h 超フラグを返す。
+ * 集計は DB 側で行い、クライアント側での再合算は禁止（要件: Issue #47）。
+ *
+ * Query Parameters:
+ * - tenant_id: テナントID (required)
+ * - year: 対象年 (optional)
+ * - month: 対象月 (optional)
+ * - store_id: 店舗ID (optional)
+ *
+ * Response:
+ * {
+ *   success: true,
+ *   data: [ { staff_id, staff_name, total_work_hours, is_over_160h } ]
+ * }
+ */
+router.get('/work-hours-summary', async (req, res, next) => {
+  try {
+    const { tenant_id, store_id, year, month } = req.query;
+
+    if (tenant_id === undefined || tenant_id === '') {
+      return res.status(400).json({
+        success: false,
+        error: MESSAGES.VALIDATION.TENANT_ID_REQUIRED
+      });
+    }
+
+    let queryText = `
+      SELECT
+        staff_id,
+        staff_name,
+        COALESCE(SUM(work_hours), 0)::float AS total_work_hours,
+        (COALESCE(SUM(work_hours), 0) > 160) AS is_over_160h
+      FROM hr.payroll
+      WHERE tenant_id = $1
+    `;
+
+    const params = [tenant_id];
+    let paramIndex = 2;
+
+    if (store_id) {
+      queryText += ` AND store_id = $${paramIndex}`;
+      params.push(store_id);
+      paramIndex++;
+    }
+
+    if (year) {
+      queryText += ` AND year = $${paramIndex}`;
+      params.push(year);
+      paramIndex++;
+    }
+
+    if (month) {
+      queryText += ` AND month = $${paramIndex}`;
+      params.push(month);
+      paramIndex++;
+    }
+
+    queryText += `
+      GROUP BY staff_id, staff_name
+      ORDER BY total_work_hours DESC, staff_name ASC
+    `;
+
+    const result = await query(queryText, params);
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    if (error instanceof DatabaseUnavailableError) return next(error);
+    console.error('Error fetching work hours summary:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * 売上実績データ取得
  * GET /api/analytics/sales-actual
  */

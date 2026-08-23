@@ -4,6 +4,7 @@ import { Button } from '../ui/button'
 import {
   BarChart3,
   CalendarIcon,
+  Clock,
   FolderOpen,
   MessageSquare,
   ClipboardList,
@@ -121,6 +122,7 @@ const AppHeader = () => {
   const menuItems = [
     { label: 'LINE', icon: MessageSquare, path: '/shift/line' },
     { label: '提出状況', icon: ClipboardCheck, path: '/shift/preferences-submission-status' },
+    { label: '稼働時間', icon: Clock, path: '/analytics/work-hours-summary' },
     { label: 'スタッフ管理', icon: Users, path: '/staff' },
     { label: '店舗管理', icon: Store, path: '/store' },
     { label: '予実管理', icon: TrendingUp, path: '/budget-actual' },
