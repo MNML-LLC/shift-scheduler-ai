@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
 
   // Analytics API
   ANALYTICS_WORK_HOURS: '/api/analytics/work-hours',
+  ANALYTICS_WORK_HOURS_SUMMARY: '/api/analytics/work-hours-summary',
   ANALYTICS_PAYROLL: '/api/analytics/payroll',
   ANALYTICS_SALES_ACTUAL: '/api/analytics/sales-actual',
   ANALYTICS_SALES_FORECAST: '/api/analytics/sales-forecast',

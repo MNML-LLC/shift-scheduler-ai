@@ -20,6 +20,7 @@ import ShiftDashboard from './components/screens/shift/ShiftDashboard'
 import BudgetActualManagement from './components/screens/BudgetActualManagement'
 import MasterDataManagement from './components/screens/MasterDataManagement'
 import PreferencesSubmissionStatus from './components/screens/PreferencesSubmissionStatus'
+import WorkHoursSummary from './components/screens/WorkHoursSummary'
 import DevTools from './dev/DevTools'
 
 // UI Components
@@ -46,6 +47,7 @@ function AppContent() {
   const [showBudgetActualManagement, setShowBudgetActualManagement] = useState(false)
   const [showMasterDataManagement, setShowMasterDataManagement] = useState(false)
   const [showPreferencesSubmissionStatus, setShowPreferencesSubmissionStatus] = useState(false)
+  const [showWorkHoursSummary, setShowWorkHoursSummary] = useState(false)
   const [showDevTools, setShowDevTools] = useState(false)
   const [showTenantSettings, setShowTenantSettings] = useState(false)
   const [selectedShiftForEdit, setSelectedShiftForEdit] = useState(null)
@@ -73,6 +75,7 @@ function AppContent() {
       setShowBudgetActualManagement(false)
       setShowMasterDataManagement(false)
       setShowPreferencesSubmissionStatus(false)
+      setShowWorkHoursSummary(false)
       setShowDevTools(false)
       setShowTenantSettings(false)
     }
@@ -102,6 +105,9 @@ function AppContent() {
     } else if (path === '/shift/preferences-submission-status') {
       resetAllFlags()
       setShowPreferencesSubmissionStatus(true)
+    } else if (path === '/analytics/work-hours-summary') {
+      resetAllFlags()
+      setShowWorkHoursSummary(true)
     } else if (path === '/constraint') {
       resetAllFlags()
       setShowConstraintManagement(true)
@@ -142,6 +148,8 @@ function AppContent() {
       navigate('/shift/monitoring', { replace: true })
     } else if (showPreferencesSubmissionStatus) {
       navigate('/shift/preferences-submission-status', { replace: true })
+    } else if (showWorkHoursSummary) {
+      navigate('/analytics/work-hours-summary', { replace: true })
     } else if (showConstraintManagement) {
       navigate('/constraint', { replace: true })
     } else if (showDraftShiftEditor) {
@@ -166,6 +174,7 @@ function AppContent() {
       !showDevTools &&
       !showTenantSettings &&
       !showPreferencesSubmissionStatus &&
+      !showWorkHoursSummary &&
       currentStep === 1
     ) {
       navigate('/', { replace: true })
@@ -184,6 +193,7 @@ function AppContent() {
     showDevTools,
     showTenantSettings,
     showPreferencesSubmissionStatus,
+    showWorkHoursSummary,
     currentStep,
     navigate,
   ])
@@ -317,6 +327,28 @@ function AppContent() {
     setShowMonitoring(false)
     setShowBudgetActualManagement(false)
     setShowMasterDataManagement(false)
+    setShowWorkHoursSummary(false)
+    setShowDevTools(false)
+    setShowTenantSettings(false)
+  }
+
+  const goToWorkHoursSummary = () => {
+    if (hasUnsavedChanges) {
+      if (!window.confirm('変更が保存されていません。稼働時間ダッシュボードに移動しますか？')) {
+        return
+      }
+      setHasUnsavedChanges(false)
+    }
+    setShowWorkHoursSummary(true)
+    setShowShiftDashboard(false)
+    setShowStaffManagement(false)
+    setShowStoreManagement(false)
+    setShowConstraintManagement(false)
+    setShowLineMessages(false)
+    setShowMonitoring(false)
+    setShowBudgetActualManagement(false)
+    setShowMasterDataManagement(false)
+    setShowPreferencesSubmissionStatus(false)
     setShowDevTools(false)
     setShowTenantSettings(false)
   }
@@ -360,6 +392,7 @@ function AppContent() {
     setShowBudgetActualManagement(false)
     setShowMasterDataManagement(false)
     setShowPreferencesSubmissionStatus(false)
+    setShowWorkHoursSummary(false)
     setShowDevTools(false)
     setShowTenantSettings(false)
 
@@ -633,6 +666,10 @@ function AppContent() {
       return <PreferencesSubmissionStatus />
     }
 
+    if (showWorkHoursSummary) {
+      return <WorkHoursSummary />
+    }
+
     if (showDevTools) {
       return (
         <DevTools
@@ -688,6 +725,7 @@ function AppContent() {
         onBudgetActualManagement={goToBudgetActualManagement}
         onMasterDataManagement={goToMasterDataManagement}
         onPreferencesSubmissionStatus={goToPreferencesSubmissionStatus}
+        onWorkHoursSummary={goToWorkHoursSummary}
       />
       <div className="flex-1 overflow-x-hidden w-full max-w-full">
         <AnimatePresence mode="wait">

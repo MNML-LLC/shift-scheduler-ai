@@ -2,7 +2,7 @@
  * Analytics データリポジトリ（インフラ層）
  * 給与・売上・ダッシュボード指標データをバックエンドAPIから取得
  */
-import { BACKEND_API_URL } from '../../config/api'
+import { BACKEND_API_URL, API_ENDPOINTS } from '../../config/api'
 import DEFAULT_CONFIG from '../../config/defaults.js'
 
 export class AnalyticsRepository {
@@ -53,6 +53,44 @@ export class AnalyticsRepository {
     } catch (error) {
       throw new Error(`給与データ取得エラー: ${error.message}`)
     }
+  }
+
+  /**
+   * スタッフ別月次稼働時間サマリーを取得
+   * hr.payroll の work_hours を staff_id 単位で SUM した集計を返す（クライアント側で再合算しない）。
+   * @param {Object} params
+   * @param {number} params.tenantId - テナントID (required)
+   * @param {number} [params.year] - 対象年
+   * @param {number} [params.month] - 対象月
+   * @param {number} [params.storeId] - 店舗ID
+   * @returns {Promise<Array<{staff_id:number, staff_name:string, total_work_hours:number, is_over_160h:boolean}>>}
+   */
+  async getWorkHoursSummary(params = {}) {
+    const { tenantId, storeId, year, month } = params
+
+    if (tenantId === undefined || tenantId === null || tenantId === '') {
+      throw new Error('tenantId is required')
+    }
+
+    const queryParams = new URLSearchParams({ tenant_id: tenantId })
+    if (storeId) queryParams.append('store_id', storeId)
+    if (year) queryParams.append('year', year)
+    if (month) queryParams.append('month', month)
+
+    const url = `${BACKEND_API_URL}${API_ENDPOINTS.ANALYTICS_WORK_HOURS_SUMMARY}?${queryParams}`
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error || '稼働時間サマリー取得に失敗しました')
+    }
+
+    return result.data || []
   }
 
   /**
