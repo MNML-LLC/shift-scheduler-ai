@@ -26,6 +26,11 @@ import DevTools from './dev/DevTools'
 // UI Components
 import AppHeader from './components/shared/AppHeader'
 
+// Repositories
+import { ShiftRepository } from './infrastructure/repositories/ShiftRepository'
+
+const shiftRepository = new ShiftRepository()
+
 function AppContent() {
   const { tenantId } = useTenant()
   const navigate = useNavigate()
@@ -53,6 +58,7 @@ function AppContent() {
   const [selectedShiftForEdit, setSelectedShiftForEdit] = useState(null)
   const [monitoringInitialMonth, setMonitoringInitialMonth] = useState(null) // Monitoring画面に渡す初期月
   const [monitoringInitialStoreId, setMonitoringInitialStoreId] = useState(null) // Monitoring画面に渡す初期店舗ID
+  const [isCopyingFromPrevious, setIsCopyingFromPrevious] = useState(false) // Issue #45: 前月コピー実行中フラグ（二重送信防止）
 
   // 店舗フィルター
   const [selectedStore, setSelectedStore] = useState('all')
@@ -444,104 +450,90 @@ function AppContent() {
     setShowShiftDashboard(true)
   }
 
+  // Issue #45: 前月シフトからのコピー実行
+  // 404/409 を含むエラーを分岐処理し、成功時は inserted_shifts_count を表示する。
+  // overwrite=true の場合は既存 FIRST 案を削除して再作成する（409 リトライ用）。
+  const runCopyFromPreviousMonth = async ({
+    storeId,
+    targetYear,
+    targetMonth,
+    transitionToDraftEditor = false,
+    overwrite = false,
+  }) => {
+    setIsCopyingFromPrevious(true)
+    try {
+      const result = await shiftRepository.copyFromPreviousMonth({
+        store_id: storeId,
+        target_year: targetYear,
+        target_month: targetMonth,
+        created_by: 1,
+        tenantId,
+        overwrite,
+      })
+
+      const insertedCount =
+        result.inserted_shifts_count ??
+        result.data?.inserted_shifts_count ??
+        result.data?.inserted_count ??
+        0
+
+      alert(`${insertedCount}件のシフトをコピーしました`)
+
+      if (transitionToDraftEditor) {
+        setShowShiftCreationMethodSelector(false)
+        setShowDraftShiftEditor(true)
+      }
+
+      return { ok: true, insertedCount }
+    } catch (error) {
+      if (error.status === 404) {
+        alert('前月の確定シフトが見つかりません')
+        return { ok: false, status: 404 }
+      }
+      if (error.status === 409) {
+        if (
+          window.confirm(
+            '同月の第1案が既に存在します。上書きしてもよろしいですか？（既存のシフトは削除されます）'
+          )
+        ) {
+          return runCopyFromPreviousMonth({
+            storeId,
+            targetYear,
+            targetMonth,
+            transitionToDraftEditor,
+            overwrite: true,
+          })
+        }
+        return { ok: false, status: 409 }
+      }
+      console.error('[前月コピー] エラー:', error)
+      alert(`前月コピー中にエラーが発生しました: ${error.message}`)
+      return { ok: false, status: error.status || 500 }
+    } finally {
+      setIsCopyingFromPrevious(false)
+    }
+  }
+
   const handleSelectCreationMethod = async methodId => {
     // 作成方法選択後の処理
     if (methodId === 'copy') {
-      // 前月コピー（曜日ベース）を実行
-      try {
-        const year = selectedShiftForEdit?.year || getCurrentYear()
-        const month = selectedShiftForEdit?.month || getCurrentMonth()
-        const storeId = selectedShiftForEdit?.storeId || selectedShiftForEdit?.store_id || 1
+      if (isCopyingFromPrevious) return
 
-        const response = await fetch('http://localhost:3001/api/shifts/plans/copy-from-previous', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            tenant_id: tenantId,
-            store_id: storeId,
-            target_year: year,
-            target_month: month,
-            created_by: 1,
-          }),
-        })
+      const year = selectedShiftForEdit?.year || getCurrentYear()
+      const month = selectedShiftForEdit?.month || getCurrentMonth()
+      const storeId = selectedShiftForEdit?.storeId || selectedShiftForEdit?.store_id || 1
 
-        const data = await response.json()
-
-        if (!response.ok) {
-          console.error('[前月コピー] エラー:', data)
-          alert(`前月のシフトコピーに失敗しました: ${data.error || data.message}`)
-          return
-        }
-
-        // バリデーション結果を確認
-        const validation = data.data.validation
-        const hasErrors = validation && validation.summary && validation.summary.error > 0
-        const hasWarnings = validation && validation.summary && validation.summary.warning > 0
-
-        // メッセージを作成
-        let message = `前月のシフトをコピーしました！\n\nコピー元: ${data.data.source_year}年${data.data.source_month}月\nコピー先: ${data.data.target_year}年${data.data.target_month}月\n\nシフト数: ${data.data.inserted_count}件`
-
-        if (data.data.fallback_count > 0) {
-          message += `\n（うち第1週にフォールバック: ${data.data.fallback_count}件）`
-        }
-
-        if (data.data.skipped_count > 0) {
-          message += `\nスキップ: ${data.data.skipped_count}件`
-        }
-
-        // 労働基準法チェック結果を追加
-        if (validation && validation.summary) {
-          message += `\n\n【労働基準法チェック結果】`
-
-          if (hasErrors || hasWarnings) {
-            message += `\n⚠️ 制約違反が検出されました`
-            if (hasErrors) {
-              message += `\n・エラー: ${validation.summary.error}件`
-            }
-            if (hasWarnings) {
-              message += `\n・警告: ${validation.summary.warning}件`
-            }
-
-            // 主な違反内容を表示
-            if (validation.violations && validation.violations.length > 0) {
-              message += `\n\n主な違反内容:`
-              const errorViolations = validation.violations
-                .filter(v => v.level === 'ERROR')
-                .slice(0, 3)
-              const warningViolations = validation.violations
-                .filter(v => v.level === 'WARNING')
-                .slice(0, 3)
-
-              errorViolations.forEach(v => {
-                message += `\n❌ ${v.message}`
-              })
-              warningViolations.forEach(v => {
-                message += `\n⚠️ ${v.message}`
-              })
-
-              if (validation.violations.length > 6) {
-                message += `\n...他${validation.violations.length - 6}件`
-              }
-            }
-
-            message += `\n\n下書き編集画面で詳細を確認し、修正してください。`
-          } else {
-            message += `\n✅ 問題なし（労働基準法に準拠）`
-            message += `\n\n下書き編集画面で確認できます。`
-          }
-        }
-
-        alert(message)
-
-        // 下書き編集画面に遷移
-        setShowShiftCreationMethodSelector(false)
-        setShowDraftShiftEditor(true)
-      } catch (error) {
-        console.error('[前月コピー] ネットワークエラー:', error)
-        alert(`前月コピー中にエラーが発生しました: ${error.message}`)
+      // 確認ダイアログ
+      if (!window.confirm('前月の確定シフトを当月の第1案としてコピーします。よろしいですか？')) {
+        return
       }
+
+      await runCopyFromPreviousMonth({
+        storeId,
+        targetYear: year,
+        targetMonth: month,
+        transitionToDraftEditor: true,
+      })
     } else if (methodId === 'csv') {
       // CSVインポート -> 下書き編集画面に遷移
       setShowShiftCreationMethodSelector(false)

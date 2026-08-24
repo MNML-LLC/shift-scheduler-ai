@@ -3722,7 +3722,7 @@ router.put('/plans/:plan_id/status', async (req, res, next) => {
  */
 router.post('/plans/copy-from-previous', async (req, res, next) => {
   try {
-    const { tenant_id = 1, store_id, target_year, target_month, created_by } = req.body;
+    const { tenant_id = 1, store_id, target_year, target_month, created_by, overwrite = false } = req.body;
 
     // バリデーション
     if (!store_id || !target_year || !target_month) {
@@ -3781,7 +3781,36 @@ router.post('/plans/copy-from-previous', async (req, res, next) => {
         });
       }
 
-      // 新規プラン作成
+      // 同月に FIRST 案が既にある場合の処理（Issue #45）
+      const existingFirstPlanResult = await query(`
+        SELECT plan_id
+        FROM ops.shift_plans
+        WHERE tenant_id = $1 AND store_id = $2
+          AND plan_year = $3 AND plan_month = $4
+          AND plan_type = 'FIRST'
+      `, [tenant_id, store_id, target_year, target_month]);
+
+      if (existingFirstPlanResult.rows.length > 0) {
+        if (!overwrite) {
+          await query('ROLLBACK');
+          return res.status(409).json({
+            success: false,
+            error: '同月の第1案が既に存在します（overwrite:true で上書き可能）'
+          });
+        }
+        // overwrite:true → 既存 FIRST 案とそのシフトを削除して再作成
+        const existingPlanIds = existingFirstPlanResult.rows.map(r => r.plan_id);
+        await query(
+          `DELETE FROM ops.shifts WHERE plan_id = ANY($1::int[]) AND tenant_id = $2`,
+          [existingPlanIds, tenant_id]
+        );
+        await query(
+          `DELETE FROM ops.shift_plans WHERE plan_id = ANY($1::int[]) AND tenant_id = $2`,
+          [existingPlanIds, tenant_id]
+        );
+      }
+
+      // 新規プラン作成（plan_type='FIRST' 明示）
       const periodStart = new Date(target_year, target_month - 1, 1);
       const periodEnd = new Date(target_year, target_month, 0);
       const planCode = `PLAN-${target_year}${String(target_month).padStart(2, '0')}-COPY`;
@@ -3791,8 +3820,8 @@ router.post('/plans/copy-from-previous', async (req, res, next) => {
         INSERT INTO ops.shift_plans (
           tenant_id, store_id, plan_year, plan_month,
           plan_code, plan_name, period_start, period_end,
-          status, generation_type, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'DRAFT', 'COPIED_FROM_PREVIOUS', $9)
+          status, plan_type, generation_type, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'DRAFT', 'FIRST', 'COPIED_FROM_PREVIOUS', $9)
         RETURNING plan_id
       `, [
         tenant_id, store_id, target_year, target_month,
@@ -3974,13 +4003,16 @@ router.post('/plans/copy-from-previous', async (req, res, next) => {
       res.status(201).json({
         success: true,
         message: `${source_year}年${source_month}月のシフトを${target_year}年${target_month}月にコピーしました`,
+        inserted_shifts_count: insertedCount,
         data: {
           plan_id: new_plan_id,
+          plan_type: 'FIRST',
           source_year,
           source_month,
           target_year,
           target_month,
           inserted_count: insertedCount,
+          inserted_shifts_count: insertedCount,
           skipped_count: skippedCount,
           fallback_count: fallbackCount,
           total_source_count: sourceShiftsResult.rows.length,

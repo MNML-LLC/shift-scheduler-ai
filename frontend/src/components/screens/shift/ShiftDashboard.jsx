@@ -9,17 +9,19 @@
 
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Menu } from 'lucide-react'
+import { Menu, Copy, Loader2 } from 'lucide-react'
 import { useTargetMonth } from '../../../hooks/useTargetMonth'
 import { useShiftStatus } from '../../../hooks/useShiftStatus'
 import { useIsMobile } from '../../../hooks/use-mobile'
 import { BACKEND_API_URL } from '../../../config/api'
 import { ShiftRepository } from '../../../infrastructure/repositories/ShiftRepository'
+import { MasterRepository } from '../../../infrastructure/repositories/MasterRepository'
 import Sidebar from '../../Sidebar'
 import ShiftStatusCards from '../../ShiftStatusCards'
 import { LoadingSpinner } from '../../ui/LoadingSpinner'
 
 const shiftRepository = new ShiftRepository()
+const masterRepository = new MasterRepository()
 
 /**
  * シフトダッシュボードコンポーネント
@@ -48,6 +50,9 @@ const ShiftDashboard = ({ onStaffManagement }) => {
   // 環境情報
   const [backendEnv, setBackendEnv] = useState(null)
   const [dbEnv, setDbEnv] = useState(null)
+
+  // Issue #45: 前月シフトからのコピー実行中フラグ（二重送信防止）
+  const [isCopying, setIsCopying] = useState(false)
 
   // シフトステータス取得
   const {
@@ -228,6 +233,82 @@ const ShiftDashboard = ({ onStaffManagement }) => {
     navigate('/deadline-settings')
   }
 
+  /**
+   * Issue #45: 前月シフトからのコピーを全店舗に実行
+   * 確認ダイアログ → 全アクティブ店舗ごとに copy-from-previous を呼ぶ →
+   * 集計結果（成功件数・404・409・失敗）を alert で表示。
+   */
+  const handleCopyFromPreviousMonth = async () => {
+    if (isCopying) return
+
+    if (
+      !window.confirm(
+        `${selectedYear}年${selectedMonth}月の第1案を前月の確定シフトからコピーします。よろしいですか？`
+      )
+    ) {
+      return
+    }
+
+    setIsCopying(true)
+    try {
+      const stores = await masterRepository.getStores()
+      const activeStores = (stores || []).filter(s => s.is_active !== false)
+      if (activeStores.length === 0) {
+        alert('アクティブな店舗が見つかりません')
+        return
+      }
+
+      let totalInserted = 0
+      const notFoundStores = []
+      const conflictStores = []
+      const errorStores = []
+
+      for (const store of activeStores) {
+        try {
+          const result = await shiftRepository.copyFromPreviousMonth({
+            store_id: store.store_id,
+            target_year: selectedYear,
+            target_month: selectedMonth,
+            created_by: 1,
+          })
+          const inserted =
+            result.inserted_shifts_count ??
+            result.data?.inserted_shifts_count ??
+            result.data?.inserted_count ??
+            0
+          totalInserted += inserted
+        } catch (err) {
+          if (err.status === 404) {
+            notFoundStores.push(store.store_name || store.store_id)
+          } else if (err.status === 409) {
+            conflictStores.push(store.store_name || store.store_id)
+          } else {
+            errorStores.push({ name: store.store_name || store.store_id, message: err.message })
+          }
+        }
+      }
+
+      let message = `${totalInserted}件のシフトをコピーしました`
+      if (notFoundStores.length > 0) {
+        message += `\n\n前月の確定シフトが見つかりません:\n・${notFoundStores.join('\n・')}`
+      }
+      if (conflictStores.length > 0) {
+        message += `\n\n同月の第1案が既に存在します（スキップ）:\n・${conflictStores.join('\n・')}`
+      }
+      if (errorStores.length > 0) {
+        message += `\n\nエラー:\n${errorStores.map(e => `・${e.name}: ${e.message}`).join('\n')}`
+      }
+      alert(message)
+
+      refetch()
+    } catch (err) {
+      console.error('前月コピーエラー:', err)
+      alert(`前月コピー中にエラーが発生しました: ${err.message}`)
+    } finally {
+      setIsCopying(false)
+    }
+  }
+
   return (
     <div className="flex h-screen">
       {/* サイドバー（デスクトップ: 常時表示 / モバイル: ドロワー） */}
@@ -288,6 +369,21 @@ const ShiftDashboard = ({ onStaffManagement }) => {
               </h1>
               <p className="text-slate-600 text-xs md:text-sm">対象月のシフト作成・管理</p>
             </div>
+            {/* Issue #45: 前月シフトからコピーボタン */}
+            <button
+              type="button"
+              onClick={handleCopyFromPreviousMonth}
+              disabled={isCopying}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs md:text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
+              title="前月の確定シフトを当月の第1案としてコピーします"
+            >
+              {isCopying ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+              {isCopying ? 'コピー中...' : '前月シフトからコピー'}
+            </button>
             {/* 環境表示 */}
             <div
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium ${

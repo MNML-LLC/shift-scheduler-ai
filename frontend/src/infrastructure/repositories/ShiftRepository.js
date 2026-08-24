@@ -503,52 +503,62 @@ export class ShiftRepository {
   }
 
   /**
-   * 前月のシフトをコピーして新しいシフト計画を作成
+   * 前月のシフトをコピーして新しいシフト計画を作成（plan_type='FIRST'）
    * @param {Object} data - リクエストデータ
    * @param {number} data.store_id - 店舗ID
    * @param {number} data.target_year - ターゲット年
    * @param {number} data.target_month - ターゲット月
    * @param {number} data.created_by - 作成者ID
-   * @param {number} data.tenantId - テナントID (オプション)
-   * @returns {Promise<Object>} 作成されたシフト計画データ
+   * @param {number} [data.tenantId] - テナントID (オプション)
+   * @param {boolean} [data.overwrite] - 同月に既存 FIRST 案がある場合の上書きフラグ
+   * @returns {Promise<Object>} コピー結果。エラー時は error.status に HTTP ステータスを保持
    */
   async copyFromPreviousMonth(data) {
-    try {
-      const { store_id, target_year, target_month, created_by, tenantId = null } = data
+    const {
+      store_id,
+      target_year,
+      target_month,
+      created_by,
+      tenantId = null,
+      overwrite = false,
+    } = data
 
-      const actualTenantId = tenantId ?? getCurrentTenantId()
+    const actualTenantId = tenantId ?? getCurrentTenantId()
 
-      const url = `${BACKEND_API_URL}/api/shifts/plans/copy-from-previous`
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          tenant_id: actualTenantId,
-          store_id,
-          target_year,
-          target_month,
-          created_by,
-        }),
-      })
+    const url = `${BACKEND_API_URL}${API_ENDPOINTS.SHIFTS_COPY_FROM_PREVIOUS}`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tenant_id: actualTenantId,
+        store_id,
+        target_year,
+        target_month,
+        created_by,
+        overwrite,
+      }),
+    })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
-      }
+    const result = await response.json().catch(() => ({}))
 
-      const result = await response.json()
-
-      if (!result.success) {
-        throw new Error(result.error || '前月からのコピーに失敗しました')
-      }
-
-      return result
-    } catch (error) {
-      console.error('前月からのコピーエラー:', error)
-      throw new Error(`前月からのコピーエラー: ${error.message}`)
+    if (!response.ok) {
+      const message = result?.error || `HTTP ${response.status}`
+      const err = new Error(message)
+      err.status = response.status
+      err.body = result
+      throw err
     }
+
+    if (!result.success) {
+      const err = new Error(result.error || '前月からのコピーに失敗しました')
+      err.status = response.status
+      err.body = result
+      throw err
+    }
+
+    return result
   }
 
   /**
