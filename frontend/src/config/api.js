@@ -37,6 +37,7 @@ export const API_ENDPOINTS = {
   SHIFTS_PREFERENCES_SUBMISSION_STATUS: '/api/shifts/preferences/submission-status',
   SHIFTS_COPY_FROM_PREVIOUS: '/api/shifts/plans/copy-from-previous',
   SHIFTS_COPY_FROM_PREVIOUS_ALL_STORES: '/api/shifts/plans/copy-from-previous-all-stores',
+  GENERATE_BULK_STREAM: '/api/shifts/plans/generate-bulk/stream',
 
   // Master Data API
   MASTER_STAFF: '/api/master/staff',

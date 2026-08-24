@@ -4606,4 +4606,360 @@ router.post('/plans/create-with-shifts', async (req, res, next) => {
   }
 });
 
+/**
+ * 複数店舗一括 AI シフト生成 (SSE 進捗ストリーム版) — Issue #50
+ * GET /api/shifts/plans/generate-bulk/stream
+ *
+ * 複数店舗を並列度3のセマフォで一括生成する。1店舗の失敗が他店舗を中断しない。
+ * APPROVED / CONFIRMED プランが既にある店舗はスキップ（削除しない）。
+ *
+ * Query Parameters:
+ *   tenant_id: number (required)
+ *   store_ids: string (CSV, e.g. "1,2,3") OR all=true (どちらか必須)
+ *   all: 'true' (optional) — 指定時 tenant の全アクティブ店舗を対象
+ *   year: number (required)
+ *   month: number (required)
+ *   created_by: number (optional)
+ *   options: JSON string (optional) — { model, temperature, maxRetries }
+ *
+ * SSE Events:
+ *   event: store_progress  data: {store_id,store_index,stores_total,phase,message,progress}
+ *   event: store_complete  data: {store_id,store_index,stores_total,plan_id}
+ *   event: store_error     data: {store_id,store_index,stores_total,error}
+ *   event: store_skipped   data: {store_id,store_index,stores_total,reason}
+ *   event: complete        data: {created[],skipped[],failed[]}
+ *   event: error           data: {error}   ← 致命的例外のみ
+ */
+const BULK_STORE_TIMEOUT_MS = 90_000
+const BULK_CONCURRENCY = 3
+
+router.get('/plans/generate-bulk/stream', async (req, res) => {
+  // ---- Pre-stream validation (通常HTTPで400/エラー応答するためSSEヘッダ確定前に実行) ----
+  const tenant_id = parseInt(req.query.tenant_id, 10)
+  const year = parseInt(req.query.year, 10)
+  const month = parseInt(req.query.month, 10)
+  const created_by = req.query.created_by ? parseInt(req.query.created_by, 10) : null
+  const allFlag = String(req.query.all || '').toLowerCase() === 'true'
+  const storeIdsRaw = typeof req.query.store_ids === 'string' ? req.query.store_ids.trim() : ''
+
+  let options = {}
+  if (req.query.options) {
+    try {
+      options = JSON.parse(req.query.options)
+    } catch {
+      return res.status(400).json({
+        success: false,
+        error: 'options パラメータの JSON パースに失敗しました'
+      })
+    }
+  }
+
+  if (!tenant_id || !year || !month) {
+    return res.status(400).json({
+      success: false,
+      error: MESSAGES.VALIDATION.MISSING_FIELDS,
+      required: ['tenant_id', 'year', 'month']
+    })
+  }
+
+  if (!storeIdsRaw && !allFlag) {
+    return res.status(400).json({
+      success: false,
+      error: 'store_ids または all=true のいずれかを指定してください'
+    })
+  }
+
+  if (year < 2000 || year > 2100) {
+    return res.status(400).json({ success: false, error: MESSAGES.VALIDATION.INVALID_YEAR_RANGE })
+  }
+  if (month < 1 || month > 12) {
+    return res.status(400).json({ success: false, error: MESSAGES.VALIDATION.INVALID_MONTH_RANGE })
+  }
+
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+  if (year < currentYear || (year === currentYear && month < currentMonth)) {
+    return res.status(400).json({
+      success: false,
+      error: MESSAGES.VALIDATION.PAST_MONTH_CREATE,
+      message: `${year}年${month}月は過去の月のため、シフトを作成できません。`
+    })
+  }
+
+  // ---- SSE ヘッダー確定 (以降のエラー応答は SSE の error イベントで返す) ----
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no')
+  if (typeof res.flushHeaders === 'function') {
+    res.flushHeaders()
+  }
+
+  const sendEvent = (event, data) => {
+    if (res.writableEnded) return
+    res.write(`event: ${event}\n`)
+    res.write(`data: ${JSON.stringify(data)}\n\n`)
+  }
+
+  const closeStream = () => {
+    if (!res.writableEnded) {
+      res.end()
+    }
+  }
+
+  let clientClosed = false
+  req.on('close', () => {
+    clientClosed = true
+  })
+
+  try {
+
+    // 対象店舗を確定
+    let targetStoreIds = []
+    if (allFlag) {
+      const storesResult = await query(
+        `SELECT store_id FROM core.stores
+         WHERE tenant_id = $1 AND is_active = TRUE
+         ORDER BY store_id`,
+        [tenant_id]
+      )
+      targetStoreIds = storesResult.rows.map((r) => Number(r.store_id))
+    } else {
+      targetStoreIds = storeIdsRaw
+        .split(',')
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => Number.isInteger(n) && n > 0)
+    }
+
+    if (targetStoreIds.length === 0) {
+      // 対象店舗ゼロは正常な空応答として扱う (SSE は既に開始済み)
+      sendEvent('complete', { created: [], skipped: [], failed: [] })
+      closeStream()
+      return
+    }
+
+    // 既存プラン (APPROVED/CONFIRMED) を持つ店舗を検出しスキップ
+    const existingResult = await query(
+      `SELECT DISTINCT store_id FROM ops.shift_plans
+       WHERE tenant_id = $1 AND plan_year = $2 AND plan_month = $3
+         AND status IN ('APPROVED', 'CONFIRMED')
+         AND store_id = ANY($4::int[])`,
+      [tenant_id, year, month, targetStoreIds]
+    )
+    const skipStoreIds = new Set(existingResult.rows.map((r) => Number(r.store_id)))
+
+    const storesTotal = targetStoreIds.length
+    const created = []
+    const skipped = []
+    const failed = []
+
+    // 事前スキップを emit
+    for (let i = 0; i < targetStoreIds.length; i++) {
+      const storeId = targetStoreIds[i]
+      if (skipStoreIds.has(storeId)) {
+        const entry = {
+          store_id: storeId,
+          reason: '承認済み/確定済みプランが存在します'
+        }
+        skipped.push(entry)
+        sendEvent('store_skipped', {
+          store_id: storeId,
+          store_index: i + 1,
+          stores_total: storesTotal,
+          reason: entry.reason
+        })
+      }
+    }
+
+    const remaining = targetStoreIds
+      .map((storeId, idx) => ({ storeId, index: idx + 1 }))
+      .filter(({ storeId }) => !skipStoreIds.has(storeId))
+
+    // セマフォ (並列度3) 実装
+    const runOneStore = async ({ storeId, index }) => {
+      if (clientClosed) return
+
+      const generationService = new ShiftGenerationService()
+      const genOptions = {
+        ...options,
+        onProgress: (payload) => {
+          if (clientClosed) return
+          sendEvent('store_progress', {
+            store_id: storeId,
+            store_index: index,
+            stores_total: storesTotal,
+            ...payload
+          })
+        }
+      }
+
+      try {
+        // 90秒タイムアウト
+        const generatePromise = generationService.generateShifts(
+          tenant_id,
+          storeId,
+          year,
+          month,
+          genOptions
+        )
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`タイムアウト (${BULK_STORE_TIMEOUT_MS}ms)`)),
+            BULK_STORE_TIMEOUT_MS
+          )
+        )
+        const genResult = await Promise.race([generatePromise, timeoutPromise])
+
+        if (clientClosed) return
+
+        // DB 書き込み: transaction(callback) パターンでアトミック実行
+        const planId = await transaction(async (client) => {
+          const existingPlan = await client.query(
+            `SELECT plan_id, status FROM ops.shift_plans
+             WHERE tenant_id = $1 AND store_id = $2 AND plan_year = $3 AND plan_month = $4
+             FOR UPDATE`,
+            [tenant_id, storeId, year, month]
+          )
+
+          let localPlanId
+          if (existingPlan.rows.length > 0) {
+            localPlanId = existingPlan.rows[0].plan_id
+            await client.query('DELETE FROM ops.shifts WHERE plan_id = $1', [localPlanId])
+          } else {
+            const periodStart = new Date(year, month - 1, 1)
+            const periodEnd = new Date(year, month, 0)
+            const planCode = `PLAN-${year}${String(month).padStart(2, '0')}-AI-${storeId}`
+            const planName = `${year}年${month}月シフト（AI一括生成）`
+
+            const planResult = await client.query(
+              `INSERT INTO ops.shift_plans (
+                 tenant_id, store_id, plan_year, plan_month,
+                 plan_code, plan_name, period_start, period_end,
+                 status, generation_type, ai_model_version, created_by
+               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'DRAFT', 'AI_GENERATED', $9, $10)
+               RETURNING plan_id`,
+              [
+                tenant_id, storeId, year, month,
+                planCode, planName, periodStart, periodEnd,
+                options.model || process.env.OPENAI_MODEL || 'gpt-4o',
+                created_by || null
+              ]
+            )
+            localPlanId = planResult.rows[0].plan_id
+          }
+
+          for (const shift of genResult.shifts) {
+            await client.query(
+              `INSERT INTO ops.shifts (
+                 tenant_id, store_id, plan_id, staff_id, shift_date, pattern_id,
+                 start_time, end_time, break_minutes, total_hours, labor_cost,
+                 is_preferred, is_modified, notes
+               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, false, 'AI一括生成')`,
+              [
+                tenant_id, storeId, localPlanId, shift.staff_id, shift.shift_date, shift.pattern_id,
+                shift.start_time, shift.end_time, shift.break_minutes,
+                null, null
+              ]
+            )
+          }
+
+          const summaryResult = await client.query(
+            `SELECT SUM(total_hours) as total_hours, SUM(labor_cost) as total_cost
+             FROM ops.shifts WHERE plan_id = $1`,
+            [localPlanId]
+          )
+          const summary = summaryResult.rows[0]
+
+          await client.query(
+            `UPDATE ops.shift_plans
+             SET total_labor_hours = $1, total_labor_cost = $2, constraint_violations = $3
+             WHERE plan_id = $4`,
+            [
+              parseFloat(summary.total_hours || 0),
+              parseInt(summary.total_cost || 0),
+              genResult.validation.violations.length,
+              localPlanId
+            ]
+          )
+
+          return localPlanId
+        })
+
+        if (clientClosed) return
+
+        created.push({ store_id: storeId, plan_id: planId })
+        sendEvent('store_complete', {
+          store_id: storeId,
+          store_index: index,
+          stores_total: storesTotal,
+          plan_id: planId
+        })
+      } catch (error) {
+        // 致命的例外 (DB接続断) は上位に伝搬
+        if (error instanceof DatabaseUnavailableError) {
+          throw error
+        }
+
+        const message =
+          (error && error.error) || (error && error.message) || 'シフト生成に失敗しました'
+        console.error(`[BulkGenerate] store=${storeId} 生成失敗:`, error)
+        failed.push({ store_id: storeId, error: message })
+        if (!clientClosed) {
+          sendEvent('store_error', {
+            store_id: storeId,
+            store_index: index,
+            stores_total: storesTotal,
+            error: message
+          })
+        }
+      }
+    }
+
+    // セマフォ (最大3並列) で順次消化
+    let cursor = 0
+    const workers = []
+    for (let w = 0; w < Math.min(BULK_CONCURRENCY, remaining.length); w++) {
+      workers.push((async () => {
+        while (true) {
+          if (clientClosed) return
+          const idx = cursor++
+          if (idx >= remaining.length) return
+          await runOneStore(remaining[idx])
+        }
+      })())
+    }
+
+    await Promise.all(workers)
+
+    if (!clientClosed) {
+      sendEvent('complete', { created, skipped, failed })
+    }
+    closeStream()
+  } catch (error) {
+    if (error instanceof DatabaseUnavailableError) {
+      sendEvent('error', {
+        success: false,
+        error: 'データベースに接続できません'
+      })
+      closeStream()
+      return
+    }
+
+    console.error('[API] 一括AI自動生成 (SSE) エラー:', error)
+    res.locals.suppressGenericAlert = true
+    await notifyShiftGenerationError(
+      'GET /api/shifts/plans/generate-bulk/stream',
+      error,
+      req.query
+    )
+
+    sendEvent('error', {
+      success: false,
+      error: (error && error.message) || '一括AI自動生成中にエラーが発生しました'
+    })
+    closeStream()
+  }
+})
+
 export default router;

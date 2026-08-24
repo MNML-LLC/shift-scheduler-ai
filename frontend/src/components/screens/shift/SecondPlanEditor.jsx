@@ -30,6 +30,7 @@ import MultiStoreShiftTable from '../../shared/MultiStoreShiftTable'
 import ShiftTableView from '../../shared/ShiftTableView'
 import TimeInput from '../../shared/TimeInput'
 import AIShiftGenerator from './AIShiftGenerator'
+import BulkShiftGenerator from './BulkShiftGenerator'
 import { LoadingSpinner } from '../../ui/LoadingSpinner'
 import { ShiftRepository } from '../../../infrastructure/repositories/ShiftRepository'
 import { MasterRepository } from '../../../infrastructure/repositories/MasterRepository'
@@ -1708,6 +1709,21 @@ const SecondPlanEditor = ({ selectedShift, onNext, onPrev, mode = 'edit' }) => {
                   />
                 )
               })()}
+              {/* Issue #50: 複数店舗一括 AI シフト生成 */}
+              {availableStores && availableStores.length > 1 && (
+                <BulkShiftGenerator
+                  tenantId={getCurrentTenantId()}
+                  stores={availableStores}
+                  year={year}
+                  month={month}
+                  onComplete={() => {
+                    loadShiftData()
+                  }}
+                  onError={err => {
+                    console.error('一括 AI シフト生成エラー:', err)
+                  }}
+                />
+              )}
               {/* Issue #165: 時間重複エラー表示 */}
               {timeOverlapInfo.hasOverlap && (
                 <div className="relative group flex items-center text-red-600 text-sm mr-2 cursor-help">
