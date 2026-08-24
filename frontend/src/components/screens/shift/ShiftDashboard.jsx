@@ -259,6 +259,8 @@ const ShiftDashboard = ({ onStaffManagement }) => {
       }
 
       let totalInserted = 0
+      let totalErrors = 0
+      let totalWarnings = 0
       const notFoundStores = []
       const conflictStores = []
       const errorStores = []
@@ -277,6 +279,11 @@ const ShiftDashboard = ({ onStaffManagement }) => {
             result.data?.inserted_count ??
             0
           totalInserted += inserted
+          const summary = result.data?.validation?.summary
+          if (summary) {
+            totalErrors += summary.error ?? 0
+            totalWarnings += summary.warning ?? 0
+          }
         } catch (err) {
           if (err.status === 404) {
             notFoundStores.push(store.store_name || store.store_id)
@@ -288,7 +295,14 @@ const ShiftDashboard = ({ onStaffManagement }) => {
         }
       }
 
-      let message = `${totalInserted}件のシフトをコピーしました`
+      let message
+      if (totalErrors > 0) {
+        message = `${totalInserted}件のシフトをコピーしました（労基違反 ${totalErrors}件・警告 ${totalWarnings}件あり）`
+      } else if (totalWarnings > 0) {
+        message = `${totalInserted}件のシフトをコピーしました（警告 ${totalWarnings}件あり）`
+      } else {
+        message = `${totalInserted}件のシフトをコピーしました`
+      }
       if (notFoundStores.length > 0) {
         message += `\n\n前月の確定シフトが見つかりません:\n・${notFoundStores.join('\n・')}`
       }
