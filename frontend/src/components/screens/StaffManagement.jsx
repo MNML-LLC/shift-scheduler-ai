@@ -47,6 +47,89 @@ const StaffManagement = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('name') // 'name' (50音順) / 'hire_date' / 'staff_code'
 
+  // 休暇残日数（Issue #51）
+  const currentFiscalYear = new Date().getFullYear()
+  const [leaveBalanceByStaff, setLeaveBalanceByStaff] = useState({})
+  const [leaveFormStaffId, setLeaveFormStaffId] = useState('')
+  const [leaveFormGrantDays, setLeaveFormGrantDays] = useState('')
+  const [leaveFormConsumeDays, setLeaveFormConsumeDays] = useState('')
+  const [leaveSubmitting, setLeaveSubmitting] = useState(false)
+  const [leaveMessage, setLeaveMessage] = useState(null) // { type: 'success' | 'error', text }
+
+  const loadLeaveBalances = useCallback(async () => {
+    try {
+      const url = `${BACKEND_API_URL}${API_ENDPOINTS.MASTER_LEAVE_BALANCE}?tenant_id=${tenantId}&fiscal_year=${currentFiscalYear}`
+      const res = await fetch(url)
+      const json = await res.json()
+      const map = {}
+      if (json && json.success && Array.isArray(json.data)) {
+        json.data.forEach(row => {
+          map[row.staff_id] = row
+        })
+      }
+      setLeaveBalanceByStaff(map)
+    } catch (err) {
+      console.error('休暇残日数の取得エラー:', err)
+    }
+  }, [tenantId, currentFiscalYear])
+
+  const submitLeaveMutation = async (endpoint, days) => {
+    const staffIdNum = parseInt(leaveFormStaffId, 10)
+    const daysNum = parseInt(days, 10)
+
+    if (!Number.isInteger(staffIdNum) || staffIdNum <= 0) {
+      setLeaveMessage({ type: 'error', text: 'スタッフを選択してください' })
+      return
+    }
+    if (!Number.isInteger(daysNum) || daysNum <= 0) {
+      setLeaveMessage({ type: 'error', text: '日数は 1 以上の整数で入力してください' })
+      return
+    }
+
+    setLeaveSubmitting(true)
+    setLeaveMessage(null)
+    try {
+      const res = await fetch(`${BACKEND_API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_id: tenantId,
+          staff_id: staffIdNum,
+          fiscal_year: currentFiscalYear,
+          days: daysNum,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setLeaveMessage({
+          type: 'error',
+          text: json.error || '更新に失敗しました',
+        })
+        return
+      }
+      setLeaveMessage({ type: 'success', text: '更新しました' })
+      setLeaveFormGrantDays('')
+      setLeaveFormConsumeDays('')
+      await loadLeaveBalances()
+    } catch (err) {
+      setLeaveMessage({ type: 'error', text: `通信エラー: ${err.message}` })
+    } finally {
+      setLeaveSubmitting(false)
+    }
+  }
+
+  const handleGrantLeave = () => {
+    submitLeaveMutation(API_ENDPOINTS.MASTER_LEAVE_BALANCE_GRANT, leaveFormGrantDays)
+  }
+
+  const handleConsumeLeave = () => {
+    submitLeaveMutation(API_ENDPOINTS.MASTER_LEAVE_BALANCE_CONSUME, leaveFormConsumeDays)
+  }
+
+  useEffect(() => {
+    loadLeaveBalances()
+  }, [loadLeaveBalances])
+
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
@@ -1310,6 +1393,89 @@ const StaffManagement = () => {
                         </div>
                       </div>
 
+                      {/* 休暇残日数 付与/取得フォーム（Issue #51） */}
+                      <div className="px-6 py-3 bg-blue-50 border-b border-blue-100 flex-shrink-0">
+                        <div className="flex flex-wrap items-end gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-700 mb-1">
+                              休暇残日数 更新（{currentFiscalYear}年度）
+                            </label>
+                            <select
+                              value={leaveFormStaffId}
+                              onChange={e => setLeaveFormStaffId(e.target.value)}
+                              disabled={leaveSubmitting}
+                              className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white w-64"
+                              aria-label="スタッフを選択"
+                            >
+                              <option value="">スタッフを選択</option>
+                              {filteredStaffList.map(s => (
+                                <option key={s.staff_id} value={s.staff_id}>
+                                  {s.name}（{s.staff_code}）
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-700 mb-1">付与日数</label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={leaveFormGrantDays}
+                                onChange={e => setLeaveFormGrantDays(e.target.value)}
+                                disabled={leaveSubmitting}
+                                className="w-24 h-9 text-sm bg-white"
+                                aria-label="付与日数"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={handleGrantLeave}
+                                disabled={leaveSubmitting}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                付与
+                              </Button>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-700 mb-1">取得日数</label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={leaveFormConsumeDays}
+                                onChange={e => setLeaveFormConsumeDays(e.target.value)}
+                                disabled={leaveSubmitting}
+                                className="w-24 h-9 text-sm bg-white"
+                                aria-label="取得日数"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={handleConsumeLeave}
+                                disabled={leaveSubmitting}
+                                variant="outline"
+                              >
+                                取得
+                              </Button>
+                            </div>
+                          </div>
+                          {leaveMessage && (
+                            <div
+                              role="status"
+                              className={`text-sm px-3 py-2 rounded-md ${
+                                leaveMessage.type === 'success'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {leaveMessage.text}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       {/* スクロール可能なコンテンツ部分 */}
                       <div className="flex-1 overflow-auto min-h-0">
                         {filteredStaffList.length === 0 ? (
@@ -1362,6 +1528,12 @@ const StaffManagement = () => {
                                   </th>
                                   <th className="px-4 py-3 text-left text-sm md:text-xs font-semibold text-gray-700 border-b">
                                     LINE連携
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-sm md:text-xs font-semibold text-gray-700 border-b">
+                                    休暇残日数
+                                    <div className="text-[10px] font-normal text-gray-500">
+                                      {currentFiscalYear}年度
+                                    </div>
                                   </th>
                                   <th className="px-4 py-3 text-left text-sm md:text-xs font-semibold text-gray-700 border-b">
                                     状態
@@ -1420,6 +1592,24 @@ const StaffManagement = () => {
                                           未
                                         </span>
                                       )}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm border-b">
+                                      {(() => {
+                                        const lb = leaveBalanceByStaff[staff.staff_id]
+                                        if (!lb) {
+                                          return <span className="text-gray-400 text-xs">-</span>
+                                        }
+                                        return (
+                                          <span className="inline-flex items-center gap-1">
+                                            <span className="font-semibold text-gray-800">
+                                              {lb.remaining_days}
+                                            </span>
+                                            <span className="text-xs text-gray-500">
+                                              / {lb.granted_days} 日
+                                            </span>
+                                          </span>
+                                        )
+                                      })()}
                                     </td>
                                     <td className="px-4 py-3 text-sm border-b">
                                       {staff.is_active === true ? (

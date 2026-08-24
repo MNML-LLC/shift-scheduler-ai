@@ -11,6 +11,7 @@ import { createErrorAlertMiddleware } from './middleware/errorAlert.js'
 import openaiRoutes from './routes/openai.js'
 import csvRoutes from './routes/csv.js'
 import masterRoutes from './routes/master.js'
+import leaveBalanceRoutes from './routes/leaveBalance.js'
 import shiftsRoutes from './routes/shifts.js'
 import analyticsRoutes from './routes/analytics.js'
 import tenantsRoutes from './routes/tenants.js'
@@ -65,6 +66,7 @@ app.use((req, res, next) => {
 app.use('/api/openai', createOpenaiLimiter(), openaiRoutes)
 app.use('/api', createGeneralLimiter())
 app.use('/api', csvRoutes)
+app.use('/api/master/leave-balance', leaveBalanceRoutes)
 app.use('/api/master', masterRoutes)
 app.use('/api/shifts', shiftsRoutes)
 app.use('/api/analytics', analyticsRoutes)

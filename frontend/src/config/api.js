@@ -53,6 +53,9 @@ export const API_ENDPOINTS = {
   MASTER_EMPLOYMENT_TYPES: '/api/master/employment-types',
   MASTER_LABOR_MANAGEMENT_RULES: '/api/master/labor-management-rules',
   MASTER_SHIFT_VALIDATION_RULES: '/api/master/shift-validation-rules',
+  MASTER_LEAVE_BALANCE: '/api/master/leave-balance',
+  MASTER_LEAVE_BALANCE_GRANT: '/api/master/leave-balance/grant',
+  MASTER_LEAVE_BALANCE_CONSUME: '/api/master/leave-balance/consume',
 
   // Tenants API
   TENANTS: '/api/master/tenants',
