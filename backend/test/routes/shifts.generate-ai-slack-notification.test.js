@@ -25,9 +25,14 @@ vi.mock('../../src/services/shift/ShiftGenerationService.js', () => ({
   },
 }))
 
-const { query } = await import('../../src/config/database.js')
+const { query, transaction } = await import('../../src/config/database.js')
 const axios = (await import('axios')).default
 const { default: shiftsRoutes } = await import('../../src/routes/shifts.js')
+
+// transaction() は callback に client を渡すが、テストでは query() モックを流用させる。
+function stubTransaction() {
+  transaction.mockImplementation(async (cb) => cb({ query }))
+}
 
 const WEBHOOK_URL = 'https://hooks.slack.com/services/T000/B000/XXXX'
 const ENDPOINT = '/api/shifts/plans/generate-ai'
@@ -63,6 +68,7 @@ describe('POST /api/shifts/plans/generate-ai — Slack error notification', () =
 
   beforeEach(() => {
     vi.clearAllMocks()
+    stubTransaction()
     process.env.SLACK_WEBHOOK_URL = WEBHOOK_URL
     axios.post.mockResolvedValue({ status: 200 })
     app = buildApp()
