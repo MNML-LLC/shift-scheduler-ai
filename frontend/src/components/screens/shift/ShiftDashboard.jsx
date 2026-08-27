@@ -23,12 +23,7 @@ import { LoadingSpinner } from '../../ui/LoadingSpinner'
 const shiftRepository = new ShiftRepository()
 const masterRepository = new MasterRepository()
 
-/**
- * シフトダッシュボードコンポーネント
- * @param {Object} props
- * @param {Function} props.onStaffManagement - スタッフ管理画面への遷移コールバック（App.jsxから渡される）
- */
-const ShiftDashboard = ({ onStaffManagement }) => {
+const ShiftDashboard = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { targetMonth } = useTargetMonth()
@@ -202,15 +197,8 @@ const ShiftDashboard = ({ onStaffManagement }) => {
     })
   }
 
-  /**
-   * スタッフ管理クリック
-   */
   const handleStaffManagement = () => {
-    if (onStaffManagement) {
-      onStaffManagement()
-    } else {
-      navigate('/staff')
-    }
+    navigate('/staff')
   }
 
   const handleMobileMonthSelect = (year, month) => {
