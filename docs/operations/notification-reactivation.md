@@ -113,6 +113,12 @@ backend の `NOTIFICATION_ENABLED` を `true` にした瞬間から上記全て�
 
 ### 3.2 本番切替（1店舗検証フェーズ）
 
+> **⚠️ 通知2系統の非対称性に注意**: `NOTIFICATION_ENABLED=true` にした瞬間、すべての通知が有効になる。
+> ただし店舗フィルタが効くのはシフト確定通知（個別送信、リクエストの `store_id` 単位）のみ。
+> 第1案承認・月次バッチ・リマインドは**テナントの LINE グループへの一斉配信**であり、
+> `hr.staff_line_accounts.is_active` のトグルを含め**いかなる DB 操作でも店舗単位に絞れない**。
+> 「1店舗フェーズ」として `is_active` トグルを使う場合、シフト確定通知の個別送信のみに有効であることを理解した上で実施すること。
+
 1. **切替の直前**に、以下のいずれかの方法で通知対象を1店舗に限定する:
    - **推奨**: LIFF backend 側で環境変数 `NOTIFICATION_STORE_ALLOWLIST=<store_id>` 等の
      フィルタを効かせる（LIFF リポで実装がある場合）
@@ -127,6 +133,15 @@ backend の `NOTIFICATION_ENABLED` を `true` にした瞬間から上記全て�
 5. `GET {prod_backend}/api/health` で 200 を確認
 6. 対象1店舗で意図的にトリガーを発火（例: 第1案の再承認）し、1通だけ届くことを確認
 7. § 4 のモニタリングを 24 時間実施
+
+#### グループ通知を含む段階検証が必要な場合（オプション）
+
+`NOTIFICATION_STORE_ALLOWLIST` 等の店舗フィルタを LIFF backend に実装することで、
+グループ通知にも店舗絞り込みが可能になる（現状は未実装）。
+段階検証を重視する場合は実装 Issue を別途起票する。
+実装がない場合の現実的な選択肢:
+- グループ通知は「全店舗に届く前提」で受け入れ、シフト確定通知のみ1店舗で検証する
+- または最初から全店舗有効化（グループ通知に店舗フィルタが不要な業務であれば許容可）
 
 ### 3.3 本番切替（全店舗展開フェーズ）
 
@@ -221,3 +236,4 @@ staging smoke test は必ず再実施）。
 |---|---|---|
 | 2026-08-14 | 初版作成 | #244 |
 | 2026-09-13 | §2.1・§6 の参照先を `routes/shifts.js::isLineNotificationEnabled()` から `services/shift/NotificationService.js::isEnabled()` に修正（リファクタリング追従） / §2.3 の `docs/MESSAGES_AND_ALERTS.md` 参照を `shift-scheduler-ai-liff` の `line-notification.json` に修正 | #350 |
+| 2026-09-13 | §3.2 に通知2系統の非対称性注記を追加（グループ配信は is_active トグル不可）。Issue #349 researcher 調査で発見 | #352 |
