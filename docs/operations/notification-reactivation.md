@@ -42,7 +42,7 @@ backend の `NOTIFICATION_ENABLED` を `true` にした瞬間から上記全て�
 
 ### 2.1 コード・実装の健全性
 
-- [ ] `backend/src/routes/shifts.js` の `isLineNotificationEnabled()` 判定ロジックが
+- [ ] `backend/src/services/shift/NotificationService.js` の `isEnabled()` 判定ロジックが
       `NOTIFICATION_ENABLED === 'true'` の厳密比較になっている（`'1'` や truthy 変換を含まない）
 - [ ] `backend/test/routes/shifts.plan-status.test.js` の "NOTIFICATION_ENABLED guard" テストが
       直近の CI で全通過している（`cd backend && npm run test -- --run` で緑）
@@ -64,10 +64,13 @@ backend の `NOTIFICATION_ENABLED` を `true` にした瞬間から上記全て�
 
 ### 2.3 メッセージ文言の最終確認
 
-- [ ] `docs/MESSAGES_AND_ALERTS.md` に記載された通知文言（第1案承認・シフト確定）が最新版で、
-      CEO / shift M層のレビュー済みであること
-- [ ] LIFF backend 側の Flex Message テンプレートに古いテスト文言（`【TEST】` 等のプレフィックス）が
+- [ ] `info-mnml/shift-scheduler-ai-liff` の `backend/src/config/line-notification.json` に記載された
+      通知文言（`approvalMessages.firstPlanApproved`・`approvalMessages.secondPlanApproved`・`reminders[*].message`）
+      が最新版で、CEO / shift M層のレビュー済みであること
+      （`docs/MESSAGES_AND_ALERTS.md` はフロントエンド UI メッセージ用であり LINE 通知とは無関係）
+- [ ] LIFF backend 側のメッセージテンプレートに古いテスト文言（`【TEST】` 等のプレフィックス）が
       残っていないこと
+      （実装は平文テキスト形式。Flex Message は使用していない）
 - [ ] 差出人アカウント名（LINE 公式アカウント表示名）が本番用の正式名称になっていること
 
 ### 2.4 staging での事前検証
@@ -201,7 +204,8 @@ staging smoke test は必ず再実施）。
 
 「機能自体が不要になった」と CEO が判断した場合は、環境変数の維持ではなくコードから削除する:
 
-1. `backend/src/routes/shifts.js` の `isLineNotificationEnabled()` と全ての呼び出し箇所を削除
+1. `backend/src/services/shift/NotificationService.js` の `isEnabled()` と全ての呼び出し箇所を削除
+   （`NotificationService.js` を呼び出している `ShiftPlanBatchService.js` と `ShiftPlanApprovalService.js` も合わせて対応）
 2. `notifyFirstPlanApproved()` ヘルパーと関連テスト（`shifts.plan-status.test.js`・
    `shifts.approve-first.test.js`・`shifts.monthly-first-plan-batch.test.js` の通知セクション）を削除
 3. `backend/.env.example` から `NOTIFICATION_ENABLED` の項目を削除
@@ -216,3 +220,4 @@ staging smoke test は必ず再実施）。
 | 日付 | 変更 | Issue |
 |---|---|---|
 | 2026-08-14 | 初版作成 | #244 |
+| 2026-09-13 | §2.1・§6 の参照先を `routes/shifts.js::isLineNotificationEnabled()` から `services/shift/NotificationService.js::isEnabled()` に修正（リファクタリング追従） / §2.3 の `docs/MESSAGES_AND_ALERTS.md` 参照を `shift-scheduler-ai-liff` の `line-notification.json` に修正 | #350 |
