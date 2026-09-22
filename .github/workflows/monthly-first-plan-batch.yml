@@ -43,7 +43,7 @@ jobs:
               -H "Content-Type: application/json" \
               -H "x-batch-api-key: ${{ secrets.BATCH_API_KEY }}" \
               -d "{\"target_year\": ${{ steps.target.outputs.year }}, \"target_month\": ${{ steps.target.outputs.month }}}" \
-              "${{ secrets.RAILWAY_BACKEND_URL }}/api/shifts/plans/monthly-first-plan-batch"
+              "${{ secrets.BACKEND_URL }}/api/shifts/plans/monthly-first-plan-batch"
           }
 
           OUTPUT=$(call_batch_api)
@@ -67,7 +67,13 @@ jobs:
 
       - name: Notify Slack (result)
         if: always() && steps.batch.outputs.batch_failed != 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "::warning::SLACK_WEBHOOK_URL secret is not set — skipping notification"
+            exit 0
+          fi
           CREATED=$(jq '.created | length' response.json)
           SKIPPED=$(jq '.skipped_already | length' response.json)
           FAILED=$(jq '.failed | length' response.json)
@@ -75,12 +81,18 @@ jobs:
           curl -sS -X POST \
             -H "Content-Type: application/json" \
             -d "{\"text\": \"月次第一案バッチ完了 ${{ steps.target.outputs.year }}-${{ steps.target.outputs.month }}\\n作成: ${CREATED}店\\n既存Skip: ${SKIPPED}店\\n失敗: ${FAILED}店\\n通知失敗: ${NOTIF_FAILED}店\"}" \
-            "${{ secrets.SLACK_WEBHOOK_URL }}"
+            "$SLACK_WEBHOOK_URL"
 
       - name: Notify Slack (failure)
         if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "::warning::SLACK_WEBHOOK_URL secret is not set — skipping failure notification"
+            exit 0
+          fi
           curl -sS -X POST \
             -H "Content-Type: application/json" \
             -d "{\"text\": \":warning: 月次第一案バッチ失敗 ${{ steps.target.outputs.year }}-${{ steps.target.outputs.month }}\\nGitHub Actions Job URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
-            "${{ secrets.SLACK_WEBHOOK_URL }}"
+            "$SLACK_WEBHOOK_URL"
