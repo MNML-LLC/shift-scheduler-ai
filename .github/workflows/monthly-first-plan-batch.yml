@@ -1,0 +1,86 @@
+name: Monthly First Plan Batch
+
+permissions:
+  contents: none
+
+on:
+  schedule:
+    - cron: '0 0 1 * *' # UTC 00:00 = JST 09:00 毎月1日
+  workflow_dispatch:
+    inputs:
+      target_year:
+        description: '対象年 (未指定時は翌月を自動算出)'
+        required: false
+        type: string
+      target_month:
+        description: '対象月 1-12 (未指定時は翌月を自動算出)'
+        required: false
+        type: string
+
+jobs:
+  batch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute target year/month
+        id: target
+        run: |
+          if [ -n "${{ github.event.inputs.target_year }}" ] && [ -n "${{ github.event.inputs.target_month }}" ]; then
+            echo "year=${{ github.event.inputs.target_year }}" >> "$GITHUB_OUTPUT"
+            echo "month=${{ github.event.inputs.target_month }}" >> "$GITHUB_OUTPUT"
+          else
+            YEAR=$(TZ=Asia/Tokyo date -d '+1 month' +%Y)
+            MONTH=$(TZ=Asia/Tokyo date -d '+1 month' +%-m)
+            echo "year=$YEAR" >> "$GITHUB_OUTPUT"
+            echo "month=$MONTH" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Call batch API
+        id: batch
+        run: |
+          set +e
+          call_batch_api() {
+            curl -sS --max-time 90 -w '\n%{http_code}' -X POST \
+              -H "Content-Type: application/json" \
+              -H "x-batch-api-key: ${{ secrets.BATCH_API_KEY }}" \
+              -d "{\"target_year\": ${{ steps.target.outputs.year }}, \"target_month\": ${{ steps.target.outputs.month }}}" \
+              "${{ secrets.RAILWAY_BACKEND_URL }}/api/shifts/plans/monthly-first-plan-batch"
+          }
+
+          OUTPUT=$(call_batch_api)
+          HTTP_CODE=$(echo "$OUTPUT" | tail -n1)
+          BODY=$(echo "$OUTPUT" | sed '$d')
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "First attempt failed (HTTP $HTTP_CODE), retrying once..."
+            OUTPUT=$(call_batch_api)
+            HTTP_CODE=$(echo "$OUTPUT" | tail -n1)
+            BODY=$(echo "$OUTPUT" | sed '$d')
+          fi
+
+          echo "$BODY" > response.json
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Batch API failed after retry (HTTP $HTTP_CODE)"
+            echo "batch_failed=true" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Notify Slack (result)
+        if: always() && steps.batch.outputs.batch_failed != 'true'
+        run: |
+          CREATED=$(jq '.created | length' response.json)
+          SKIPPED=$(jq '.skipped_already | length' response.json)
+          FAILED=$(jq '.failed | length' response.json)
+          NOTIF_FAILED=$(jq '.failed_notification | length' response.json)
+          curl -sS -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"月次第一案バッチ完了 ${{ steps.target.outputs.year }}-${{ steps.target.outputs.month }}\\n作成: ${CREATED}店\\n既存Skip: ${SKIPPED}店\\n失敗: ${FAILED}店\\n通知失敗: ${NOTIF_FAILED}店\"}" \
+            "${{ secrets.SLACK_WEBHOOK_URL }}"
+
+      - name: Notify Slack (failure)
+        if: failure()
+        run: |
+          curl -sS -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \":warning: 月次第一案バッチ失敗 ${{ steps.target.outputs.year }}-${{ steps.target.outputs.month }}\\nGitHub Actions Job URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "${{ secrets.SLACK_WEBHOOK_URL }}"
