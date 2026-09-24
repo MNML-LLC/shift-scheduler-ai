@@ -98,7 +98,7 @@ POST /api/shifts/plans/monthly-first-plan-batch
 | Secret | 説明 |
 |---|---|
 | `BATCH_API_KEY` | Railway 側と同じ値 |
-| `SLACK_WEBHOOK_URL` | 通知先 Slack チャンネルの Incoming Webhook URL |
+| `SLACK_WEBHOOK_URL` | バッチ結果・失敗通知を受け取る Slack チャンネルの Incoming Webhook URL。**未設定の場合、Slack 通知ステップは skip される（ワークフロー全体は正常完了）**。`gh secret set SLACK_WEBHOOK_URL -R info-mnml/shift-scheduler-ai` で設定。 |
 | `RAILWAY_BACKEND_URL` | Railway backend のパブリック URL |
 
 設定手順: GitHub → リポジトリ → **Settings** → **Secrets and variables** → **Actions** →
@@ -217,6 +217,24 @@ gh workflow run monthly-first-plan-batch.yml \
   -f target_month=8
 ```
 
+### curl 直接実行（Actions・gh CLI が使えない場合のフォールバック）
+
+10/1 に GitHub Actions が発火しない場合や、staging で直接 API を呼びたい場合に使う。
+
+```bash
+# Railway ダッシュボードまたは GitHub Secrets から値を確認してセット
+BATCH_API_KEY="<Railway Variables / GitHub Secrets の BATCH_API_KEY 値>"
+BACKEND_URL="<Railway backend の公開 URL（本番 or staging）>"
+
+curl -sS -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-batch-api-key: ${BATCH_API_KEY}" \
+  -d '{"target_year": 2026, "target_month": 10}' \
+  "${BACKEND_URL}/api/shifts/plans/monthly-first-plan-batch" | python3 -m json.tool
+```
+
+`created` に店舗が入っていれば成功。`skipped_already` は同月内に既にプランが存在した店舗（冪等実行の場合は全店 skip になる）。
+
 同月を再実行しても、既に作成済みの店舗は `skipped_already` になり LINE 通知は再送されない
 （冪等性）。失敗した店舗のみ再度 INSERT が試行される。
 
@@ -248,3 +266,9 @@ gh workflow run monthly-first-plan-batch.yml \
 :warning: 月次第一案バッチ失敗 2026-8
 GitHub Actions Job URL: https://github.com/MNML-LLC/shift-scheduler-ai/actions/runs/XXX
 ```
+
+## 変更履歴
+
+| 日付 | 変更内容 | 関連 |
+|---|---|---|
+| 2026-09-24 | §手動再実行手順に curl セクション追加 / GitHub Secrets 表に SLACK_WEBHOOK_URL 追加 | #349 |
