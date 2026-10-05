@@ -35,7 +35,7 @@
     "jwk-to-pem": "^2.0.7",
     "openai": "^7.27.0",
     "papaparse": "^5.7.0",
-    "pg": "^8.23.0"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
